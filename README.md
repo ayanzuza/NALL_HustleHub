@@ -83,42 +83,7 @@ MongoDB and the React frontend are introduced in later parts. In Part 1, the dat
 
 ### 3.1 System Architecture Diagram
 
-```mermaid
-flowchart TB
-    subgraph ClientBoundary["Client Boundary (untrusted)"]
-        Browser["Browser / Postman\n(React frontend from Part 2)"]
-    end
-
-    subgraph ServerBoundary["Server Boundary (trusted)"]
-        direction TB
-        TLS["HTTPS / TLS termination\n(self-signed cert - dev)"]
-        Helmet["Security headers (Helmet)"]
-        CORS["CORS policy"]
-        BodyLimit["Body size limit + JSON parsing"]
-        Router["Express Router\n/api/auth, /api/users"]
-        Validate["express-validator\ninput validation"]
-        AuthMw["JWT Auth Middleware\n(verifies Bearer token)"]
-        Controller["Auth Controller\n(register / login / me)"]
-        Bcrypt["bcrypt\npassword hashing (12 salt rounds)"]
-        JWT["jsonwebtoken\nsign / verify"]
-        ErrorMw["Centralized Error Handler\n(no stack traces to client)"]
-        Store["In-memory User Store\n(Part 2: MongoDB / Mongoose)"]
-    end
-
-    Browser -- "HTTPS request" --> TLS
-    TLS --> Helmet --> CORS --> BodyLimit --> Router
-    Router --> Validate
-    Validate -- "valid" --> Controller
-    Validate -- "invalid (400, direct response)" --> Browser
-    Router -. "protected routes only" .-> AuthMw
-    AuthMw --> Controller
-    Controller --> Bcrypt
-    Controller --> JWT
-    Controller --> Store
-    Controller -- "error" --> ErrorMw
-    ErrorMw -- "safe JSON error" --> Browser
-    Controller -- "JSON response" --> Browser
-```
+<img width="1368" height="1819" alt="MERMIAD DIAGRAM drawio" src="https://github.com/user-attachments/assets/70e8a18b-7859-488a-9f2a-e6afb90d7959" />
 
 ### 3.2 Request Processing Flow
 
