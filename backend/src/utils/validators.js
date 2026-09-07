@@ -1,3 +1,11 @@
+/**
+ * Registration & Login Validation Rules
+ * Enforces well-formed emails, a safe character set for names
+ * (blocking script/HTML injection attempts), a minimum-strength
+ * password policy, and an allow-list for roles (admin cannot be
+ * self-assigned at registration).
+ */
+
 const { body } = require('express-validator');
 
 // Validation rules are intentionally strict: rejecting bad input up
