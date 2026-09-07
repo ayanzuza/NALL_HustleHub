@@ -11,6 +11,9 @@
   "keywords": ["hustlehub", "express", "jwt", "security"],
   "author": "Lonwabo Gumede (ST10270409)",
   "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
