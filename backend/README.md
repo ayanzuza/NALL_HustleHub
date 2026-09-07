@@ -272,3 +272,13 @@ Generative AI (Anthropic Claude) was used to assist with parts of this submissio
 - Generating the Postman test collection and troubleshooting local environment setup (HTTPS certificate generation, environment variable configuration)
 
 All AI-assisted output was reviewed, tested, and verified by the group before being included in this submission. The group takes full responsibility for the functionality, accuracy, and originality of the final work submitted, in accordance with the institution's Academic Integrity Policy.
+
+### Troubleshooting (Windows / Git Bash)
+
+- If `npm run gen-cert` reports a malformed subject name and `certs/cert.pem` is missing afterwards, Git Bash is rewriting the leading `/` in the `-subj` argument as a Windows path. Run it with path conversion disabled instead:
+```bash
+  MSYS_NO_PATHCONV=1 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout certs/key.pem -out certs/cert.pem -subj "/C=ZA/ST=KwaZulu-Natal/L=Durban/O=HustleHub/OU=Dev/CN=localhost"
+```
+- Confirm both files exist afterwards: `ls certs/`
+- In PowerShell, `curl` is aliased to `Invoke-WebRequest`, which does not support the `-k` flag. Use `curl.exe` explicitly instead, e.g. `curl.exe -k https://localhost:5443/api/health`.
+- If PowerShell mangles quotes in a JSON request body, write the JSON to a file first and send it with `-d "@file.json"` instead of an inline string.
