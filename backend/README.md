@@ -307,3 +307,27 @@ All scenarios in the collection were executed against the local HTTPS server and
 | Protected route - no token | 401 | Pass |
 | Protected route - invalid token | 401 | Pass |
 | Protected route - valid token | 200, correct user returned | Pass |
+
+### API Response Format
+
+All endpoints return a consistent JSON envelope to make client-side handling predictable:
+
+**Success:**
+```json
+{
+  "success": true,
+  "message": "Human-readable summary",
+  "data": { }
+}
+```
+
+**Error:**
+```json
+{
+  "success": false,
+  "message": "Human-readable error summary",
+  "errors": [ { "field": "email", "message": "A valid email address is required" } ]
+}
+```
+
+The `errors` array is only present on validation failures (`400` responses). All other error responses (`401`, `404`, `409`, `500`) return just `success` and `message`, with no internal details exposed.
