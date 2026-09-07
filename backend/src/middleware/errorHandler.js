@@ -1,3 +1,11 @@
+/**
+ * Centralised Error Handling
+ * notFound() catches unmatched routes with a consistent 404 shape.
+ * errorHandler() logs the full error server-side (stack trace in
+ * development only) and returns a safe, generic JSON message to
+ * the client -- never a stack trace, file path, or config value.
+ */
+
 const { nodeEnv } = require('../config/env');
 
 function notFound(req, res) {
