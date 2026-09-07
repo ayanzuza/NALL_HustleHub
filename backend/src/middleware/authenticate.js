@@ -1,3 +1,11 @@
+/**
+ * JWT Authentication Middleware
+ * Extracts and verifies the Bearer token on protected routes.
+ * On success, attaches { id, role } to req.user for downstream
+ * role-based access control. Rejects missing, malformed, invalid,
+ * or expired tokens with a single generic 401 response.
+ */
+
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/env');
 
