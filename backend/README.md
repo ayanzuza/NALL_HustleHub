@@ -62,7 +62,7 @@ flowchart TB
     TLS --> Helmet --> CORS --> BodyLimit --> Router
     Router --> Validate
     Validate -- "valid" --> Controller
-    Validate -- "invalid" --> ErrorMw
+    Validate -- "invalid (400, direct response)" --> Browser
     Router -. "protected routes only" .-> AuthMw
     AuthMw --> Controller
     Controller --> Bcrypt
@@ -141,14 +141,16 @@ using `bcrypt.compare`, which never re-exposes the plaintext.
 ### 4.2 JWT-Based Authentication
 On successful registration or login, the server issues a signed JWT
 containing only the user's `id` and `role` (no sensitive data) with
-a 1-hour expiry. The token is returned to the client, which must
+a configurable expiry (1 hour by default, via `JWT_EXPIRES_IN`). The token is returned to the client, which must
 send it as a `Bearer` token in the `Authorization` header on
 subsequent requests. The `authenticate` middleware verifies the
 token's signature and expiry on **every** protected request
 (`/api/users/me` in this part) using a secret loaded from an
-environment variable — never hard-coded. Invalid, missing, expired,
-or tampered tokens are all rejected with the same generic `401`
-message, so an attacker cannot distinguish between failure reasons.
+environment variable — never hard-coded. Requests with no token, or a malformed `Authorization` header, are rejected with a generic
+`401 Authentication required` response. Requests with a token that is invalid, expired, or
+tampered are separately rejected with a generic `401 Invalid or expired token` response —
+within that second category, no further detail is revealed about which specific check failed,
+so an attacker cannot tell whether a token was expired, tampered with, or simply forged.
 
 ### 4.3 Input Validation
 Every field accepted by `/api/auth/register` and `/api/auth/login`
@@ -192,6 +194,8 @@ unmatched routes.
 - `.env` is excluded from version control; `JWT_SECRET` is loaded
   from the environment and the app fails fast on startup if it is
   missing.
+- CORS is currently unrestricted (`cors()` with default settings, permitting any origin) for
+  Part 1 local testing; this will be scoped to the known frontend origin in Part 2.
 
 *(Rate limiting and a full Content-Security-Policy configuration are
 scoped to Part 2, once the frontend origin is known.)*
