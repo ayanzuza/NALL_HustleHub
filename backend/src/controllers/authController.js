@@ -1,3 +1,11 @@
+/**
+ * Auth Controller
+ * Handles user registration, login, and profile retrieval.
+ * Passwords are hashed with bcrypt before storage; JWTs are issued
+ * on successful registration/login and verified by authenticate.js
+ * on every subsequent protected request.
+ */
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const userStore = require('../models/userStore');
