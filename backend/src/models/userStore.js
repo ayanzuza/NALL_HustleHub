@@ -1,3 +1,12 @@
+/**
+ * In-Memory User Store
+ * Provides findByEmail/findById/create/toPublicUser, mirroring the
+ * shape of a future Mongoose model so this can be swapped for
+ * MongoDB persistence in Part 2 with minimal controller changes.
+ * toPublicUser() ensures the password hash is never exposed
+ * outside the auth layer.
+ */
+
 const crypto = require('crypto');
 
 /**
