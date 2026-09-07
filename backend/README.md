@@ -335,3 +335,18 @@ The `errors` array is only present on validation failures (`400` responses). All
 ### Why 12 Salt Rounds?
 
 bcrypt's cost factor controls how many times the hashing algorithm iterates internally — each increment doubles the computational work required per hash. 12 rounds was chosen as a balance between security and performance: it is high enough to make brute-force and rainbow-table attacks computationally impractical at scale, while still hashing a single password in well under a second on typical hardware, so registration and login remain responsive. Lower values (e.g. 10) are faster but weaker; significantly higher values (e.g. 15+) meaningfully slow down every login and are generally reserved for systems with stronger hardware guarantees or lower request volume.
+
+## Part 1 Submission Checklist
+
+- [x] Architecture diagram (MERN, security features, system boundaries)
+- [x] Backend API built with Node.js and Express
+- [x] Registration and login functionality (in-memory storage)
+- [x] Passwords securely hashed (bcrypt, 12 salt rounds)
+- [x] JWT issued on login; validated on every protected request
+- [x] HTTPS served via locally configured SSL certificate
+- [x] Input validation on all user-supplied data
+- [x] Safe, controlled error responses (no stack traces or internals exposed)
+- [x] README covering system overview, structure, and security decisions
+- [x] Postman collection covering success and invalid scenarios
+- [ ] Demonstration video recorded and linked
+- [ ] GitHub repository link included in final submission
