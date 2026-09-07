@@ -286,3 +286,24 @@ All AI-assisted output was reviewed, tested, and verified by the group before be
 ### Manual Testing Note
 
 When testing endpoints manually outside Postman (e.g. via terminal), remember that Windows PowerShell's built-in `curl` alias does not behave like real curl — always invoke `curl.exe` explicitly on Windows to get standard curl flag support (`-k`, `-X`, `-d`, etc.).
+
+### Postman Test Results Summary
+
+All scenarios in the collection were executed against the local HTTPS server and passed as expected:
+
+| Test | Expected | Result |
+|---|---|---|
+| Health check | 200 | Pass |
+| Register - success | 201, JWT issued | Pass |
+| Register - duplicate email | 409 | Pass |
+| Register - weak password | 400, field errors | Pass |
+| Register - invalid email | 400 | Pass |
+| Register - missing fields | 400 | Pass |
+| Register - malicious input (script injection) | 400, rejected | Pass |
+| Login - success | 200, JWT issued | Pass |
+| Login - wrong password | 401, generic message | Pass |
+| Login - unknown email | 401, same generic message (no enumeration) | Pass |
+| Login - missing fields | 400 | Pass |
+| Protected route - no token | 401 | Pass |
+| Protected route - invalid token | 401 | Pass |
+| Protected route - valid token | 200, correct user returned | Pass |
