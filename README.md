@@ -7,25 +7,25 @@
 
 ---
 
-## 1. System Overview
+1. System Overview
 
-HustleHub+ is a secure freelance marketplace platform designed to connect clients with freelancers. Freelancers will be able to advertise services, while clients will be able to browse available services and make bookings. In later stages of development, the platform will also support booking-related transactions, income tracking and estimated tax obligations.
+HustleHub+ is a safe freelance marketplace that links employers and independent contractors. Clients will be able to peruse offered services and make reservations, and freelancers will be able to promote their services. The technology will eventually include income tracking, booking-related transactions, and projected tax requirements.
 
-The platform is designed for two primary user groups. **Freelancers** will use the platform to advertise their services and manage information associated with their work, while **clients** will use the platform to browse available services and make bookings. An administrative role is planned for later development to support platform management and moderation.
+There are two main user groups for which the platform is intended. While **clients** will use the platform to look through available services and make reservations, **freelancers** will use it to promote their services and maintain information related to their work. Future plans call for the creation of an administrative position to assist with platform administration and moderating.
 
-Because HustleHub+ will process sensitive information, including user credentials, authentication information, transactional records and income-related data, security is treated as a fundamental design requirement. Part 1 establishes the secure backend foundation on which the later functionality will be built.
+Security is regarded as a basic design need because HustleHub+ would handle sensitive data, such as user credentials, authentication information, transactional records, and income-related data. The secure backend framework that will serve as the basis for the subsequent functionality is established in Part 1.
 
-The Part 1 implementation uses **Node.js and Express** to provide the backend API. The current implementation supports user registration, user login and a JWT-protected user profile endpoint. User passwords are protected using bcrypt hashing, incoming registration and login data is validated using `express-validator`, authenticated requests are protected using JSON Web Tokens (JWTs), and the API is served over HTTPS using a locally generated self-signed certificate.
+The backend API is provided via **Node.js and Express** in the Part 1 implementation. User registration, user login, and a JWT-protected user profile endpoint are all supported by the current implementation. JSON Web Tokens (JWTs) are used to secure authenticated requests, bcrypt hashing is used to secure user passwords, `express-validator' is used to validate incoming registration and login data, and a locally generated self-signed certificate is used to serve the API over HTTPS.
 
-The POE follows an incremental development approach. Therefore, the complete MERN application is not implemented in Part 1. The current backend uses an **in-memory user store**, which is permitted by the Part 1 requirements. Persistent MongoDB storage, the React frontend, service/gig functionality, bookings and transaction functionality will be introduced in later stages.
+The POE employs a method of progressive development. As a result, Part 1 does not implement the entire MERN application. The Part 1 criteria allow for the use of a **in-memory user store** in the existing backend. Later phases will see the introduction of the React frontend, service/gig capabilities, bookings, transaction functionality, and persistent MongoDB storage.
 
----
 
-## 2. Security Architecture
 
-The Part 1 backend is implemented using Node.js and Express. Express uses middleware to process requests as they move through the application's request-response cycle. Middleware can inspect or modify requests and responses, terminate requests, or pass control to subsequent middleware using `next()` (Express.js, 2026).
+2. Security Architecture
 
-The current backend applies several global middleware components, including Helmet, CORS, JSON and URL-encoded body parsing, and Morgan request logging. A request body size limit of 10 KB is also applied to reduce the risk associated with unnecessarily large request payloads.
+Express and Node.js are used in the implementation of the Part 1 backend. As requests proceed through the request-response cycle of the application, Express employs middleware to handle them. Middleware can use `next()` to transfer control to subsequent middleware, examine or alter requests and answers, or terminate requests (Express.js, 2026).
+
+Several global middleware components, such as Helmet, CORS, JSON and URL-encoded body parsing, and Morgan request logging, are used in the present backend. To lessen the possibility of needlessly large request payloads, a 10 KB request body size limit is also included.
 
 The API exposes the following Part 1 endpoints:
 
@@ -36,17 +36,17 @@ The API exposes the following Part 1 endpoints:
 | POST   | `/api/auth/login`    | Not required   | Authenticates a user and issues a JWT           |
 | GET    | `/api/users/me`      | JWT required   | Returns the authenticated user's public profile |
 
-The authentication routes use validation middleware before the request reaches the authentication controllers. The protected `/api/users/me` route uses JWT authentication middleware to verify the supplied Bearer token before allowing the request to reach the controller.
+Prior to the request reaching the authentication controllers, the authentication routes employ validation middleware. Before enabling the request to reach the controller, the protected `/api/users/me` route employs JWT authentication middleware to confirm the provided Bearer token.
 
-The application also uses centralised error handling. Unknown routes are handled by a dedicated `notFound` middleware, while unexpected application errors are processed by `errorHandler.js`. Express documents error-handling middleware as a specialised middleware function using the `(err, req, res, next)` signature (Express.js, 2026).
+Additionally, the application makes use of centralized error handling. A specialized middleware called `notFound` handles unknown routes, while `errorHandler.js` handles unexpected application problems. Express uses the `(err, req, res, next)` signature to document error-handling middleware as a specialized middleware function (Express.js, 2026).
 
-For Part 1, user records are stored in an in-memory data structure through `userStore.js`. The data-access functions provide operations such as finding a user by email, finding a user by ID and creating a user. This abstraction is intended to allow the storage mechanism to be replaced by MongoDB/Mongoose during a later stage without requiring the authentication controllers to be completely redesigned.
+Part 1 uses `userStore.js` to store user records in an in-memory data structure. Operations like locating a user by email, locating a user by ID, and creating a user are all made possible by the data-access functions. This abstraction is meant to enable MongoDB/Mongoose to eventually replace the storage method without necessitating a full rewrite of the authentication controllers.
 
----
 
-## 4. Security Decisions
 
-### 4.1 Password Hashing
+3. Security Decisions
+
+3.1 Password Hashing
 
 HustleHub+ does not store user passwords in plaintext. During registration, the submitted password is processed using the `bcryptjs` password-hashing library before the resulting password hash is stored in the in-memory user store.
 
@@ -176,14 +176,14 @@ Helmet is also enabled globally in the Express application. Helmet provides secu
 
 ## References
 
-Express.js (2026) *Using Middleware*. Available at: https://expressjs.com/en/guide/using-middleware/ (Accessed: 6 September 2026).
+Express.js. 2026. Using Middleware [online] Available at: < https://expressjs.com/en/guide/using-middleware/ (Accessed: 2 September 2026).
 
-Express.js (2026) *Error Handling*. Available at: https://expressjs.com/en/guide/error-handling/ (Accessed: 6 September 2026).
+Express.js (2026) *Error Handling*. Available at: https://expressjs.com/en/guide/error-handling/ (Accessed: 2 September 2026).
 
-Node.js (2026) *HTTPS*. Node.js Documentation. Available at: https://nodejs.org/api/https.html (Accessed: 6 September 2026).
+Node.js (2026) *HTTPS*. Node.js Documentation. Available at: https://nodejs.org/api/https.html (Accessed: 2 September 2026).
 
 OWASP (2026) *JSON Web Token Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html (Accessed: 6 September 2026).
 
-OWASP (2026) *Password Storage Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html (Accessed: 6 September 2026).
+OWASP (2026) *Password Storage Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html (Accessed: 2 September 2026).
 
-OWASP (2026) *Input Validation Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html (Accessed: 6 September 2026).
+OWASP (2026) *Input Validation Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html (Accessed: 2 September 2026).
