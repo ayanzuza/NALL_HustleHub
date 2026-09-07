@@ -1,80 +1,249 @@
-HUSTLE HUB+
-1.	System Overview
-HustleHub+ is a safe freelance marketplace that links employers and independent contractors. Freelancers will be able to promote their services, while clients will be able to peruse and reserve freelancing services. Along with recording financial transactions related to reservations, the platform is designed to give users information about their income and expected tax requirements.
-Security is seen as a fundamental requirement rather than a feature introduced later in development because HustleHub+ processes sensitive data, such as user passwords, authentication information, transactional records, and income-related information.
-The platform's secure backend is established in Part 1. Node.js and Express are used to create the backend, which provides REST API endpoints for user registration, authentication, and access to verified user data. Since the POE allows local in-memory or file-based storage prior to the introduction of a database in a later stage, the current implementation's usage of an in-memory user store is suitable for Part 1.
-Routes, controllers, middleware, validation tools, configuration, and data storage make up the layered structure of the backend. This division makes it possible to manage authentication, validation, and error handling duties separately, which enhances maintainability and makes it simpler to find and examine security controls.
+# HustleHub+ — Secure Freelance Marketplace Platform
 
-2.	Intended Users
-The two main marketplace user roles that HustleHub+ is built around are:
-Customers
-The site is used by clients to locate and reserve freelancers' services. The client role is depicted during user authentication and registration in Part 1.
-Independent contractors
-The site is used by freelancers to promote their services and eventually get reservations from customers. During registration and authentication, the freelancer role is also portrayed.
+**Modules:** INSY7314/w and APDS7311/w
+**Student:** Lonwabo Gumede (ST10270409)
+**Part:** 1 — Secure Foundations
 
-Additionally, an administrator role is recognized internally by the backend. Nevertheless, users cannot self-register as administrators using the Part 1 registration validator. Only client and freelancer roles are allowed to register.
-Because privileged positions shouldn't be freely assignable through an unrestricted public registration endpoint, this distinction is crucial for security.
+---
 
-3.	Backend Architecture
-An Express-based REST architecture powers the HustleHub+ backend.
-The components of the primary application are as follows:
-Component	Responsibility
-app.js	Configures routes, error handling, request processing, Express, security middleware.
-server.js	Builds the HTTPS server and loads the private key and SSL certificate.
-routes/	Adds middleware that is particular to a given route and defines API endpoints.
-controllers/	Includes user authentication, login, and registration.
-middleware/		Offers error management, validation-result processing, and authentication.
-utils/validators.js	Specifies rules for login and registration validation.
-models/userStore.js	Supplies the in-memory user storage for Part 1.
-config/env.js	Loads the environment settings and keeps the necessary secrets safe.
-certs/	Includes the development SSL certificate and key that were created locally.
-postman/	Includes the Postman collection from Part 1, which is used to test the API.
+## 1. System Overview
 
-Middleware can be applied globally or to specific routes thanks to Express's support for both application-level and router-level middleware. This is exactly the same structure as HustleHub+, where authentication and validation are linked to the routes that need them and security middleware is applied at the application level. (Express.js, 2026)
+HustleHub+ is a secure freelance marketplace that connects two primary types of users:
 
+* **Freelancers** — advertise services ("gigs"), manage bookings, and track income and estimated tax obligations.
+* **Clients** — browse available gigs and book the services they need.
 
-4.	Request and Processing Flow
-A regulated processing sequence is followed while submitting a request to the HustleHub+ backend.
-General request flow
-Client/Postman
-↓
-HTTPS
-↓
-Express application
-↓
-Security and request middleware
-↓
-Route
-↓
-Validation middleware
-↓
-Authentication middleware where required
-↓
+A third role, **Admin**, is recognised by the backend and will oversee the platform in later parts of the project, including user and gig moderation. Admin accounts cannot be self-assigned through public registration.
+
+Because HustleHub+ processes sensitive information such as passwords, authentication credentials, booking and transaction records, and income-related information, security is treated as a fundamental design requirement from Part 1 rather than as a feature added later.
+
+Part 1 delivers the secure backend foundation. Node.js and Express provide REST API endpoints for registration, authentication, and access to authenticated user information. The database layer is currently implemented using an in-memory user store, as permitted by the POE brief, and is designed so that it can be replaced with MongoDB/Mongoose in Part 2 with minimal changes to the controllers.
+
+The backend includes:
+
+* Password hashing using `bcryptjs`
+* JWT-based authentication
+* HTTPS using a locally generated development certificate
+* Server-side input validation using `express-validator`
+* Security headers using `helmet`
+* Request body-size limits
+* Environment-based secret management
+* Centralised and controlled error handling
+* Protected routes using reusable authentication middleware
+* Postman tests covering successful and invalid scenarios
+
+Gigs, bookings, transactions, the React frontend, and additional security and deployment features are introduced in later parts of the project.
+
+---
+
+## 2. Intended Users
+
+HustleHub+ is designed around the following marketplace roles.
+
+### 2.1 Clients
+
+Clients use the platform to:
+
+* Browse available freelance services
+* View freelancer offerings
+* Book services
+* Track booking and transaction information in later parts of the project
+
+The `client` role is available through the public registration endpoint.
+
+### 2.2 Freelancers
+
+Freelancers use the platform to:
+
+* Advertise services as gigs
+* Manage bookings
+* Track income
+* View estimated tax obligations in later parts of the project
+
+The `freelancer` role is available through the public registration endpoint.
+
+### 2.3 Admin
+
+An administrator role is recognised internally by the backend and will be used for privileged platform management in later parts.
+
+Admin cannot be selected during public registration. The registration validator only permits:
+
+* `client`
+* `freelancer`
+
+This prevents an unauthenticated user from simply assigning themselves an elevated role.
+
+---
+
+## 3. Backend Architecture
+
+HustleHub+ follows the **MERN** architecture: MongoDB, Express, React, and Node.js.
+
+MongoDB and the React frontend are introduced in later parts. In Part 1, the data-access layer uses an in-memory store that follows a Mongoose-shaped interface, allowing the persistence mechanism to be replaced with MongoDB/Mongoose later.
+
+### 3.1 System Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph ClientBoundary["Client Boundary (untrusted)"]
+        Browser["Browser / Postman<br/>(React frontend from Part 2)"]
+    end
+
+    subgraph ServerBoundary["Server Boundary (trusted)"]
+        direction TB
+        TLS["HTTPS / TLS termination<br/>(self-signed cert - dev)"]
+        Helmet["Security headers<br/>(Helmet)"]
+        CORS["CORS policy"]
+        BodyLimit["Body size limit + JSON parsing"]
+        Router["Express Router<br/>/api/auth, /api/users"]
+        Validate["express-validator<br/>input validation"]
+        AuthMw["JWT Auth Middleware<br/>(verifies Bearer token)"]
+        Controller["Auth Controller<br/>(register / login / me)"]
+        Bcrypt["bcryptjs<br/>password hashing (12 salt rounds)"]
+        JWT["jsonwebtoken<br/>sign / verify"]
+        ErrorMw["Centralized Error Handler<br/>(no stack traces to client)"]
+        Store["In-memory User Store<br/>(Part 2: MongoDB / Mongoose)"]
+    end
+
+    Browser -- "HTTPS request" --> TLS
+    TLS --> Helmet --> CORS --> BodyLimit --> Router
+    Router --> Validate
+    Validate -- "valid" --> Controller
+    Validate -- "invalid (400)" --> Browser
+    Router -. "protected routes only" .-> AuthMw
+    AuthMw --> Controller
+    Controller --> Bcrypt
+    Controller --> JWT
+    Controller --> Store
+    Controller -- "error" --> ErrorMw
+    ErrorMw -- "safe JSON error" --> Browser
+    Controller -- "JSON response" --> Browser
+```
+
+### 3.2 Request Processing Flow
+
+A controlled processing sequence is followed when a request is submitted to the HustleHub+ backend.
+
+For general requests:
+
+```text
+Client / Postman
+       ↓
+HTTPS / TLS
+       ↓
+Helmet / CORS / Body-size limits
+       ↓
+Express Router
+       ↓
+Input Validation
+       ↓
 Controller
-↓
-In-memory user store
-↓
-Controlled JSON response
+       ↓
+Data Store
+       ↓
+Controlled JSON Response
+```
 
-This kind of layered request processing is suitable for an Express API since Express's middleware concept is especially made to enable various processing functions to run throughout a request-response cycle. (Express.js, 2026)
+For protected routes, JWT authentication is inserted before the controller:
 
+```text
+Client / Postman
+       ↓
+HTTPS / TLS
+       ↓
+Security and request middleware
+       ↓
+Express Router
+       ↓
+Input Validation
+       ↓
+JWT Authentication Middleware
+       ↓
+Controller
+       ↓
+Data Store
+       ↓
+Controlled JSON Response
+```
 
+Invalid requests are rejected before they reach the controller. Authentication failures are rejected by the JWT middleware before protected business logic is executed.
 
+### 3.3 Component Summary
 
+| Layer              | Technology                                       | Responsibility                                            |
+| ------------------ | ------------------------------------------------ | --------------------------------------------------------- |
+| Transport          | Node.js `https` module + self-signed certificate | Encrypts traffic between client and server                |
+| Security headers   | `helmet`                                         | Applies protective HTTP security headers                  |
+| CORS               | `cors`                                           | Controls cross-origin requests                            |
+| Request protection | Express body-parser limits                       | Restricts request body size                               |
+| Input validation   | `express-validator`                              | Validates user-supplied data before controller processing |
+| Authentication     | `jsonwebtoken`                                   | Creates and verifies signed JWTs                          |
+| Password security  | `bcryptjs`                                       | Hashes and compares passwords                             |
+| Routing            | Express Router                                   | Separates authentication and protected user routes        |
+| Data               | In-memory user store                             | Stores user records in Part 1                             |
+| Error handling     | Centralised middleware                           | Provides safe and consistent error responses              |
 
-5.	API Routes
-The following relevant endpoints are exposed by the Part 1 backend:
-Method	Endpoint	Purpose	Authentication
-GET	/api/health	Determines if the API is operational.	Not required
-POST	/api/auth/register	Creates a new user account.	Not required
-POST	/api/auth/login	Verifies an existing user's identity.	Not required
-GET	/api/users/me	Retrieves the data of the verified user.	JWT required
+---
 
-It is evident that authentication is not regarded as a one-time login event because public authentication endpoints and protected user endpoints are kept apart. Rather, access to protected resources is then managed using authentication credentials.
+## 4. Project Structure
 
-6.	Password Security and Hashing
-Passwords are not kept in plaintext on HustleHub+.
-The bcryptjs library is used to process the password entered during registration:
+```text
+hustlehub-backend/
+├── certs/
+│   └── generate-cert.sh
+├── postman/
+│   └── HustleHub-Part1.postman_collection.json
+├── src/
+│   ├── config/
+│   │   └── env.js
+│   ├── controllers/
+│   │   └── authController.js
+│   ├── middleware/
+│   │   ├── authenticate.js
+│   │   ├── errorHandler.js
+│   │   └── validateRequest.js
+│   ├── models/
+│   │   └── userStore.js
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   └── userRoutes.js
+│   ├── utils/
+│   │   └── validators.js
+│   ├── app.js
+│   └── server.js
+├── .env.example
+├── package.json
+└── README.md
+```
+
+The project follows a layered structure so that routing, controllers, middleware, validation, configuration, and data access have separate responsibilities.
+
+This separation improves maintainability and makes individual security controls easier to test and review. It also allows the in-memory `userStore.js` to be replaced by a Mongoose model in Part 2 without significantly changing the authentication architecture.
+
+---
+
+## 5. API Routes
+
+The following endpoints are implemented in Part 1:
+
+| Method | Endpoint             | Authentication | Purpose                                   |
+| ------ | -------------------- | -------------- | ----------------------------------------- |
+| GET    | `/api/health`        | No             | Determines whether the API is operational |
+| POST   | `/api/auth/register` | No             | Creates a new user account                |
+| POST   | `/api/auth/login`    | No             | Authenticates an existing user            |
+| GET    | `/api/users/me`      | Yes            | Returns the authenticated user's profile  |
+
+Public authentication routes are kept separate from protected user routes. Authentication is therefore not treated as a one-time event: every protected request must provide valid authentication credentials.
+
+---
+
+## 6. Password Security and Hashing
+
+Passwords are never stored or logged in plaintext.
+
+During registration, the submitted password is processed using `bcryptjs`:
+
+```text
 User password
       ↓
 bcrypt hashing
@@ -82,12 +251,15 @@ bcrypt hashing
 Password hash
       ↓
 Stored in userStore
+```
 
-The application makes use of:
-12 rounds of bcrypt salt
-Instead of the original password, the generated password hash is saved as passwordHash.
-Since a password shouldn't be kept in plaintext, this is a crucial security measure. Instead of directly storing passwords, OWASP advises utilizing specialized password-hashing algorithms like Argon2id, bcrypt, or PBKDF2. Password hashing is better than encryption, according to OWASP, because the original password cannot be easily obtained by reversing the hash. (OWASP, 2026)
-HustleHub+ does not decrypt or retrieve a stored password during login. Rather, the cached password hash and the password entered at login are compared by bcrypt:
+HustleHub+ uses **12 bcrypt salt rounds**. bcrypt generates a unique salt for each password and deliberately makes password hashing computationally expensive. This increases the cost of password-guessing attacks if stored password hashes are compromised.
+
+Only the resulting `passwordHash` is stored.
+
+During login, the original password is not recovered or decrypted. Instead, the submitted password is compared with the stored hash:
+
+```text
 Submitted password
        ↓
 bcrypt.compare()
@@ -95,18 +267,32 @@ bcrypt.compare()
 Stored password hash
        ↓
 Match / no match
+```
 
 Only when the comparison succeeds does the application issue a JWT.
-This means that the authentication process does not require the application to retain the user's plaintext password.
 
-7.	JWT-Based Authentication
-HustleHub+ creates a JSON Web Token (JWT) following successful authentication.
-The JWT includes the user's:
-•	ID 
-•	role
-The server-side JWT_SECRET environment variable is used to sign the token, which has an adjustable expiration period (the current default is one hour).
-Because JWT offers a concise technique for conveying claims between parties, it is suitable for the Part 1 authentication requirement. JWT is a small, URL-safe representation of claims that can be digitally signed or otherwise integrity safeguarded, according to the IETF's RFC 7519. (RFC 7519, 2015)
-JWT authentication flow:
+This approach follows the security principle that passwords should be protected using dedicated password-hashing algorithms rather than reversible encryption.
+
+---
+
+## 7. JWT-Based Authentication
+
+Following successful authentication, HustleHub+ generates a signed JSON Web Token (JWT).
+
+The token contains only the information required for authentication and authorisation:
+
+* User ID
+* User role
+
+Sensitive information such as the user's password is never placed inside the JWT.
+
+The token is signed using the `JWT_SECRET` environment variable. The secret is not hard-coded in the source code.
+
+The token expiration is configurable using `JWT_EXPIRES_IN`, with a default of **1 hour**.
+
+### JWT Authentication Flow
+
+```text
 User submits email + password
              ↓
        Input validation
@@ -119,189 +305,605 @@ User submits email + password
              ↓
        JWT is generated
              ↓
-      Token returned to client
+       Token returned to client
              ↓
 Client sends Bearer token
 with subsequent requests
              ↓
-   authenticate middleware
+    authenticate middleware
              ↓
-       jwt.verify()
+          jwt.verify()
              ↓
-Valid token → request proceeds
-Invalid token → HTTP 401
+       ┌───────────────┐
+       │ Valid token?  │
+       └───────┬───────┘
+          Yes  │  No
+           ↓   ↓
+      Request   HTTP 401
+      proceeds
+```
 
+The authentication middleware verifies the JWT signature and expiration on every protected request.
 
-8.	JWT Protection of Routes
-Instead of being carried out within the controller itself, JWT authentication is implemented as route middleware.
-The route that is protected is:
+Requests with no token or a malformed `Authorization` header return:
+
+```text
+401 Authentication required
+```
+
+Invalid, expired, tampered, or forged tokens return a generic:
+
+```text
+401 Invalid or expired token
+```
+
+No further token failure details are disclosed to the client.
+
+---
+
+## 8. JWT Protection of Routes
+
+JWT verification is implemented as reusable route middleware rather than being embedded directly inside the controller.
+
+The Part 1 protected route is:
+
+```text
 GET /api/users/me
-Because of the way the route is set up, the authentication middleware runs before the controller:
+```
+
+The processing sequence is:
+
+```text
 GET /api/users/me
         ↓
-authenticate
+authenticate middleware
         ↓
 JWT verification
         ↓
-me controller
+authenticated user identified
+        ↓
+controller
+        ↓
+JSON response
+```
 
-Because authentication becomes a reusable middleware control that can be connected to more protected routes as the application grows, this is better than putting authentication code inside each individual controller.
-For this kind of route-specific processing, Express enables middleware at the router level. (Express.js, 2026)
+This design makes authentication reusable because the same middleware can be applied to additional protected routes as the application grows.
 
-9.	Input Validation
-Part 1 validates all user input submitted through the implemented registration and login endpoints.
-For this, HustleHub+ makes use of express-validator. For verifying and cleaning incoming request data, the library offers Express middleware. (Express-validator, 2026)
+Express supports middleware at application and router levels, making this approach suitable for separating public and protected processing.
 
-Validation of registration
-The endpoint for registration verifies:
-•	The name is given.
-•	The name has two to one hundred characters.
-•	Only allowed characters are present in the name.
-•	Email is given.
-•	The email format is valid.
-•	Email has become commonplace.
-•	The password is given.
-•	The password has eight to one hundred and twenty-eight characters.
-•	There is an uppercase character in the password.
-•	There is a lowercase character in the password.
-•	There is a number in the password.
-•	The password contains at least one special character.
-•	When a role is given, it must be either client or independent contractor.
+---
 
-Validation of login
-The endpoint for login verifies:
-•	Email is given.
-•	The email format is valid.
-•	The email address is normalised.
-•	The password is given.
+## 9. Input Validation
 
-Prior to the controller, the validation middleware runs. The request is denied with HTTP 400 Bad Request if validation is unsuccessful.
-Because client-side validation can be circumvented by an attacker, OWASP advises using server-side validation and validating input as soon as possible. Additionally, it suggests establishing acceptable character sets, formats, and length limitations as needed. (OWASP, 2026)
-As a result, HustleHub+'s validation method offers an extra security barrier between the application's authentication mechanism and untrusted external data.
+All user input accepted by the registration and login endpoints is validated server-side using `express-validator`.
 
-10.	Request Size Protection
-JSON and URL-encoded request bodies are limited to 10 KB by the backend:
+Server-side validation is important because client-side validation can be bypassed by an attacker.
+
+### 9.1 Registration Validation
+
+The registration endpoint validates:
+
+* Name is provided
+* Name is between 2 and 100 characters
+* Name contains only permitted characters
+* Email is provided
+* Email has a valid format
+* Email is normalised
+* Password is provided
+* Password is between 8 and 128 characters
+* Password contains an uppercase character
+* Password contains a lowercase character
+* Password contains a number
+* Password contains a special character
+* Role, when supplied, must be `client` or `freelancer`
+
+The `admin` role cannot be self-assigned during registration.
+
+### 9.2 Login Validation
+
+The login endpoint validates:
+
+* Email is provided
+* Email has a valid format
+* Email is normalised
+* Password is provided
+
+Validation takes place before the controller is executed.
+
+Invalid requests receive:
+
+```text
+HTTP 400 Bad Request
+```
+
+with structured validation errors.
+
+This provides a security barrier between untrusted external input and authentication or data-storage operations.
+
+---
+
+## 10. Request Size Protection
+
+The backend limits JSON and URL-encoded request bodies to **10 KB**:
+
+```javascript
 express.json({ limit: '10kb' })
 express.urlencoded({ limit: '10kb' })
+```
 
-This keeps the authentication API from processing request bodies that are too big.
-This is especially important since APIs shouldn't accept an infinite amount of request data. As part of API input protection, OWASP's REST security guidelines advise establishing suitable request-size limitations. (OWASP, 2026)
+This prevents the authentication API from unnecessarily processing oversized request bodies and reduces exposure to resource-exhaustion attacks involving excessively large payloads.
 
-11.	HTTPS Configuration
-Instead of HTTP, HTTPS is used to deliver the HustleHub+ backend.
-The server.js code loads a local SSL certificate and private key and makes use of Node.js's HTTPS functionality:
+---
+
+## 11. HTTPS Configuration
+
+The HustleHub+ backend is served over HTTPS rather than plain HTTP.
+
+The `server.js` implementation uses Node.js's native HTTPS functionality and loads a locally generated development certificate and private key:
+
+```text
 HTTPS client
-     ↓
+      ↓
 SSL/TLS encryption
-     ↓
+      ↓
 HustleHub+ Express API
+```
 
-If the necessary SSL certificate or private key cannot be located, the application will not launch. The project's certificate-generation script can be used to create the development certificate.
-To construct HTTPS servers with TLS-related setup, including keys and certificates, Node.js offers https.createServer(). (Node.js, 2026)
-Because JWTs and authentication credentials are sent between the client and API, HTTPS is especially crucial for HustleHub+. Sensitive data is less likely to be intercepted during network transmission when it is encrypted.
+The development certificate is self-signed because the application is being tested locally.
 
+This protects authentication credentials and JWTs while they are transmitted between the client and server. Without HTTPS, credentials and tokens could potentially be intercepted over an unencrypted network.
 
-12.	Controlled Error Handling
-Centralized error management is implemented by HustleHub+ by:
-notFound 
-error handler
-Additionally, the application makes sure that the client is not immediately notified of unforeseen internal issues.
-As an example, the API returns:
+If the certificate or private key is missing, the application fails to start rather than silently falling back to HTTP.
+
+For production deployment, the self-signed certificate would be replaced with a certificate issued by a trusted Certificate Authority.
+
+---
+
+## 12. Security Headers and CORS
+
+### 12.1 Helmet
+
+`helmet()` is used to apply standard HTTP security headers.
+
+These headers provide additional browser-level protection and help reduce exposure to common web security risks.
+
+### 12.2 CORS
+
+CORS is currently configured using the default permissive configuration:
+
+```javascript
+cors()
+```
+
+This is intentional for Part 1 local testing because the final frontend origin is not yet established.
+
+In Part 2, CORS will be restricted to the known HustleHub+ frontend origin rather than permitting requests from arbitrary origins.
+
+---
+
+## 13. Controlled Error Handling
+
+HustleHub+ uses centralised error-handling middleware.
+
+The application includes:
+
+* A `notFound` handler for unmatched routes
+* A central error handler for unexpected errors
+
+Unexpected internal errors are logged server-side for debugging, while the client receives a safe response without internal implementation details.
+
+For example:
+
+```json
 {
   "success": false,
   "message": "An unexpected error occurred"
 }
-for unforeseen server-side malfunctions.
+```
 
-During development, internal stack traces might be recorded server-side; however, the API response does not include them.
-This is significant because error messages may inadvertently reveal details about the underlying workings of an application, such as:
-•	Paths to files
-•	Stack traces
-•	Details on the framework
-•	Details of internal implementation
-•	Configuration details
+Stack traces, file paths, configuration details, and library internals are not returned to API clients.
 
-As a result, the controlled error response establishes a distinction between the data that developers need for debugging and the data that API users should be able to access.
+This creates a separation between information required by developers for debugging and information that should be exposed to external users.
 
-13.	Authentication Error Protection
-The same generic error message is purposefully returned by the login procedure when either:
-•	Either the password is wrong 
-•	The email address is invalid.
-The answer is:
-Incorrect password or email
-By doing this, it is prevented from needlessly disclosing which portion of the provided credentials was inaccurate.
-Likewise, a generic response is used by the JWT middleware:
-A token that is invalid or expires for authentication tokens that are not valid.
+---
 
-As a result, an attacker can gain less information from responses pertaining to authentication.
-14.	Threat Notes
-Threat 1: Credential Theft:
-Users' real passwords may be revealed if the user store was compromised and unencrypted passwords were kept there.
-Control: Before being stored, passwords are hashed using bcrypt.
+## 14. Authentication Error Protection
 
-Threat 2: Inadequate authentication
-Without properly authenticating, a user might be able to access protected resources.
-Control: JWT authentication middleware is used for protected routes, and a valid Bearer token is required for every request.
+Authentication-related responses are intentionally generic.
 
-Threat 3: manipulation of tokens
-A JWT's identity or job information could be altered by an attacker.
-Control: The server-side JWT secret is used to sign and validate JWTs.
+For login, the same response is returned when:
 
-Threat 4: Incorrect or malevolent input
-Attackers may send unexpected values to authentication endpoints.
-Control: Prior to controller processing, server-side validation verifies the data format, length, allowable characters, and permitted role values. When feasible, OWASP prefers allowlist-style validation over server-side validation of untrusted input.
+* The email address does not exist
+* The password is incorrect
 
-Threat 5: Interception of sensitive data
-It is possible for credentials or authentication tokens sent over an unencrypted connection to be intercepted.
-Control: A locally specified SSL certificate is used to serve the backend over HTTPS.
+Example:
 
-Threat 6: Error-related leakage of information
-Implementation details may be revealed by comprehensive error messages or stack traces.
-Control: Clients receive controlled answers without stack traces or file locations, and internal errors are managed centrally.
+```text
+Incorrect email or password
+```
 
-Threat 7: Excessive requests
-To use up server resources, an attacker might submit request bodies that are excessively large.
-Control: The maximum size of JSON and URL-encoded request bodies is 10 KB.
+This reduces the amount of information an attacker can use to determine whether a particular email address has an account.
 
-Threat 8: Increasing privileges by registering
-It is possible for a malevolent user to try to register as an administrator.
-Control: Only client and freelancer roles are accepted for public registration.
+Similarly, invalid and expired or tampered JWTs are handled using a generic authentication failure response rather than revealing the exact reason for the token failure.
 
-15.	Academic Security Conclusion
-HustleHub+ is built on a security-focused foundation thanks to the Part 1 design. Password hashing, JWT-based authentication, server-side input validation, HTTPS, security headers, request-size limitations, environment-based secret management, and controlled error handling are all combined in the backend.
-Before reaching sensitive application functionality, requests are subjected to security measures as part of the architecture's layered approach. Passwords are never kept in plaintext, input is verified on the server, protected routes demand a valid JWT, and internal failures are kept from being needlessly shown to API users.
-Additionally, the design offers a good starting point for further development. The POE permits Part 1 to utilize an in-memory user store, but because the user storage layer and authentication controllers are separated, the storage mechanism can be changed to a database at a later time without significantly altering the authentication architecture.
-As a result, the final design satisfies the immediate Part 1 needs while offering a structured basis for the extra transactional, marketplace, and security features that will be created in later sections.
+---
 
-## AI Disclosure
+## 15. Environment and Secret Management
 
-# Annexure: Disclosure of AI Usage in my Assessment
+Sensitive configuration is stored in environment variables rather than hard-coded into the application.
 
-## Generative AI Use
+The main authentication secret is:
 
-| Section(s) within the Assessment         | AI Tool Used     | Purpose / Intention Behind Use                                                                                                                                                                                                                                                                                                          | Date(s) Used     | Link to AI Chat                                                |
-| ---------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
-| Part 1 – Documentation / Mermaid Diagram | ChatGPT (OpenAI) | Guidance on creating and structuring a Mermaid diagram for the HustleHub+ system documentation. ChatGPT was used to explain the Mermaid diagram syntax, structure, and how to represent the required system components and relationships. The generated guidance was reviewed and adapted by me for the requirements of the assessment. | 7 September 2026 | https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 |
+```text
+JWT_SECRET
+```
 
-## Statement of Responsible AI Use
+The JWT expiration can be configured using:
+
+```text
+JWT_EXPIRES_IN
+```
+
+The `.env` file is excluded from version control.
+
+The application performs fail-fast checks during startup so that it does not run without required security configuration.
+
+A strong random secret can be generated using:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+---
+
+## 16. Threat Notes
+
+| Threat                                   | Risk                                                                           | Control                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Credential theft                         | Plaintext passwords could be exposed if the store is compromised               | Passwords are hashed using bcrypt before storage                            |
+| Inadequate authentication                | Unauthenticated users could access protected resources                         | JWT authentication middleware protects private routes                       |
+| JWT manipulation                         | An attacker could attempt to modify token claims                               | JWTs are signed and verified using a server-side secret                     |
+| Malicious input                          | Unexpected or malicious values could reach application logic                   | Server-side allowlist and format validation is performed before controllers |
+| Sensitive-data interception              | Credentials or tokens could be intercepted in transit                          | HTTPS/TLS encrypts client-server communication                              |
+| Information leakage                      | Stack traces and implementation details could aid attackers                    | Centralised error handling returns safe generic responses                   |
+| Oversized requests                       | Excessive payloads could consume server resources                              | Request bodies are limited to 10 KB                                         |
+| Privilege escalation during registration | A user could attempt to register as an administrator                           | Public registration only permits `client` and `freelancer` roles            |
+| User enumeration                         | Attackers could identify registered accounts through different login responses | Generic authentication failure messages are used                            |
+
+---
+
+## 17. Setup and Running Locally
+
+### 17.1 Install Dependencies
+
+```bash
+npm install
+```
+
+### 17.2 Configure Environment Variables
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and provide a strong `JWT_SECRET`.
+
+A random secret can be generated with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+### 17.3 Generate the Development Certificate
+
+```bash
+npm run gen-cert
+```
+
+This creates the local SSL certificate and private key inside the `certs/` directory.
+
+### 17.4 Start the Server
+
+```bash
+npm start
+```
+
+For development with automatic reloading:
+
+```bash
+npm run dev
+```
+
+The API is available at:
+
+```text
+https://localhost:5443
+```
+
+Because the development certificate is self-signed, browsers and API clients may display a certificate warning. This is expected for local development.
+
+---
+
+## 18. Windows / Git Bash Troubleshooting
+
+### 18.1 OpenSSL Subject Path Conversion
+
+If:
+
+```bash
+npm run gen-cert
+```
+
+reports a malformed subject name and `certs/cert.pem` is not created, Git Bash may be rewriting the leading `/` in the OpenSSL `-subj` argument as a Windows path.
+
+Run:
+
+```bash
+MSYS_NO_PATHCONV=1 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout certs/key.pem -out certs/cert.pem -subj "/C=ZA/ST=KwaZulu-Natal/L=Durban/O=HustleHub/OU=Dev/CN=localhost"
+```
+
+Then confirm that both files exist:
+
+```bash
+ls certs/
+```
+
+### 18.2 PowerShell `curl`
+
+In PowerShell, `curl` may refer to the `Invoke-WebRequest` alias rather than the standard curl executable.
+
+Use:
+
+```powershell
+curl.exe -k https://localhost:5443/api/health
+```
+
+The `-k` option allows testing against the self-signed local certificate.
+
+### 18.3 JSON Request Bodies in PowerShell
+
+If PowerShell causes quoting problems with inline JSON, save the JSON request body to a file and send it using:
+
+```powershell
+-d "@file.json"
+```
+
+---
+
+## 19. Postman Testing
+
+The project includes:
+
+```text
+postman/HustleHub-Part1.postman_collection.json
+```
+
+The collection tests both successful and invalid scenarios.
+
+Before running the collection:
+
+1. Start the HustleHub+ HTTPS server.
+2. Import the Postman collection.
+3. Disable Postman's SSL certificate verification for local testing.
+4. Run the collection.
+
+### Test Scenarios
+
+The collection covers:
+
+* Successful registration
+* Duplicate email registration
+* Weak password registration
+* Invalid email registration
+* Missing registration fields
+* Script/HTML injection attempt in the name field
+* Successful login
+* Incorrect password
+* Unknown email
+* Missing login fields
+* Protected route with a valid token
+* Protected route without a token
+* Protected route with an invalid token
+
+---
+
+## 20. Postman Test Results
+
+All scenarios in the Part 1 collection were executed against the local HTTPS server and passed as expected.
+
+| Test                            | Expected                   | Result |
+| ------------------------------- | -------------------------- | ------ |
+| Health check                    | 200                        | Pass   |
+| Register - success              | 201, JWT issued            | Pass   |
+| Register - duplicate email      | 409                        | Pass   |
+| Register - weak password        | 400, field errors          | Pass   |
+| Register - invalid email        | 400                        | Pass   |
+| Register - missing fields       | 400                        | Pass   |
+| Register - malicious input      | 400, rejected              | Pass   |
+| Login - success                 | 200, JWT issued            | Pass   |
+| Login - wrong password          | 401, generic message       | Pass   |
+| Login - unknown email           | 401, same generic message  | Pass   |
+| Login - missing fields          | 400                        | Pass   |
+| Protected route - no token      | 401                        | Pass   |
+| Protected route - invalid token | 401                        | Pass   |
+| Protected route - valid token   | 200, correct user returned | Pass   |
+
+---
+
+## 21. API Response Format
+
+The API uses a consistent JSON response structure.
+
+### Success
+
+```json
+{
+  "success": true,
+  "message": "Human-readable summary",
+  "data": {}
+}
+```
+
+### Validation Error
+
+```json
+{
+  "success": false,
+  "message": "Human-readable error summary",
+  "errors": [
+    {
+      "field": "email",
+      "message": "A valid email address is required"
+    }
+  ]
+}
+```
+
+The `errors` array is included for validation failures.
+
+Other errors such as `401`, `404`, `409`, and `500` return safe `success` and `message` fields without exposing internal implementation details.
+
+---
+
+## 22. Why 12 Bcrypt Salt Rounds?
+
+The bcrypt cost factor determines how computationally expensive password hashing is.
+
+HustleHub+ uses **12 salt rounds** as a balance between security and performance. Increasing the cost factor makes password guessing more expensive for an attacker, while also increasing the processing time required by the server for registration and login.
+
+The chosen value provides a stronger password-hashing configuration than very low cost factors while remaining practical for a local development application.
+
+The exact cost factor can be reviewed and adjusted as the system is deployed to environments with different hardware and performance requirements.
+
+---
+
+## 23. Known Dependency Advisory
+
+At the time of Part 1 development, `npm audit` reports three moderate-severity advisories involving the `qs` package, which is pulled in transitively through the Express/body-parser dependency chain.
+
+No compatible non-breaking fix was available at the time of testing. Running:
+
+```bash
+npm audit fix --force
+```
+
+would require a major Express version change and could introduce breaking changes.
+
+For this reason, the dependency was not force-upgraded immediately before submission without full regression testing.
+
+The advisory will be reviewed again during Parts 2 and 3, when dependency updates can be tested alongside the broader application.
+
+---
+
+## 24. Roadmap
+
+### Part 2
+
+Planned functionality includes:
+
+* MongoDB persistence
+* Mongoose integration
+* Gig CRUD
+* Booking functionality
+* Transaction records
+* Income tracking
+* Role-based access control
+* React frontend
+* Rate limiting
+* Restricted CORS configuration
+* Content Security Policy
+* Newman API testing
+* Frontend testing
+
+### Part 3
+
+Planned functionality includes:
+
+* Tax estimation
+* Financial dashboard
+* CI/CD using GitHub Actions
+* Static analysis
+* Docker
+* Docker Compose
+* Structured logging
+* Additional security controls
+* Final security review
+
+---
+
+## 25. Academic Security Conclusion
+
+Part 1 establishes a security-focused foundation for HustleHub+.
+
+The backend combines several security controls rather than relying on a single mechanism. Passwords are hashed before storage, authentication is performed using signed JWTs, protected routes require valid authentication credentials, user input is validated server-side, HTTPS protects data in transit, request bodies are size-limited, security headers are applied, secrets are stored through environment configuration, and internal errors are controlled before being returned to clients.
+
+The layered architecture ensures that requests pass through security controls before sensitive application functionality is reached. Invalid input is rejected before controller processing, authentication is checked before protected resources are accessed, and internal failures are separated from information exposed to API users.
+
+The Part 1 in-memory store is permitted by the POE requirements. Because data access has been separated from the controllers, the persistence mechanism can be replaced with MongoDB/Mongoose in Part 2 without requiring a complete redesign of the authentication architecture.
+
+The resulting implementation therefore satisfies the immediate Part 1 secure-foundation requirements while providing a structured basis for the marketplace, financial, and additional security functionality planned for later parts.
+
+---
+
+# AI Disclosure
+
+## Annexure: Disclosure of AI Usage in my Assessment
+
+### Generative AI Use
+
+| Section(s) within the Assessment         | AI Tool Used     | Purpose / Intention Behind Use                                                                                                                                                                                                                                                                                                      | Date(s) Used     | Link to AI Chat                                                |
+| ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
+| Part 1 – Documentation / Mermaid Diagram | ChatGPT (OpenAI) | Guidance on creating and structuring a Mermaid diagram for the HustleHub+ system documentation. ChatGPT was used to explain Mermaid diagram syntax, structure, and how to represent the required system components and relationships. The generated guidance was reviewed and adapted by me for the requirements of the assessment. | 7 September 2026 | https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 |
+
+### Statement of Responsible AI Use
 
 ChatGPT was used as a supporting tool during the development of the assessment. Its use was limited to obtaining guidance and explanations relating to the structure and implementation of a Mermaid diagram for the HustleHub+ documentation. The AI-generated guidance was reviewed, interpreted, and adapted to suit the requirements of the assessment. The final assessment work, decisions, implementation, and documentation remain my responsibility.
 
+---
 
+# Part 1 Submission Checklist
 
-Mermaid MERN Diagram:
-<img width="1368" height="1819" alt="MERMIAD DIAGRAM drawio" src="https://github.com/user-attachments/assets/70e8a18b-7859-488a-9f2a-e6afb90d7959" />
+* [x] Architecture diagram
+* [x] MERN architecture documented
+* [x] Backend API built with Node.js and Express
+* [x] Registration and login functionality
+* [x] In-memory user storage
+* [x] Passwords securely hashed using bcrypt
+* [x] JWT issued after authentication
+* [x] JWT validated on protected requests
+* [x] HTTPS served using a local SSL certificate
+* [x] Server-side input validation
+* [x] Controlled error responses
+* [x] Security headers
+* [x] Request-size protection
+* [x] Environment-based secret management
+* [x] Postman collection
+* [x] Successful and invalid test scenarios
+* [ ] Demonstration video recorded and linked
+* [ ] GitHub repository link included in final submission
 
+---
 
+# References
 
-References:
-Express.js. 2026. Using middleware. [online] Available at: < https://expressjs.com/en/guide/using-middleware/ > [Accessed 1 September 2026]
-Express.js. 2026. Routing. [online]. Available at: < https://expressjs.com/en/guide/routing/ > [Accessed 1 September 2026]
-Express.js. 2026. Express middleware. [online] Available at: < https://expressjs.com/en/resources/middleware/ > [Accessed 1 September 2026]
-Express-Validator. 2026. express-validator. [online] Available at: < https://express-validator.github.io/docs/ > [Accessed 1 September 2026]
-Jones, M., Bradley, J. and Sakimura, N. 2015. RFC 7519: JSON Web Token (JWT).
-Node.js. 2026. Node.js v26.8.1 documentation. [online]. Available at: < https://nodejs.org/api/https.html > [Accessed 1 September 2026]
-OpenAI. 2026. Chat-GPT (GPT-5.6 Luna). Available at: https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 [Accessed: 1 September 2026]
-OWASP. 2026. Input Validation Cheat Sheet. [online]. Available at: < https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet > [Accessed 1 September 2026]
-OWASP. 2026. Password Storage Cheat Sheet. [online]. Available at: < https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet > [Accessed 1 September 2026]
-OWASP. 2026. REST Security Cheat Sheet. [online]. Available at: < https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet > [Accessed 1 September 2026]
+Express.js. 2026. *Using middleware*. [online] Available at: https://expressjs.com/en/guide/using-middleware/ [Accessed 1 September 2026].
+
+Express.js. 2026. *Routing*. [online] Available at: https://expressjs.com/en/guide/routing/ [Accessed 1 September 2026].
+
+Express.js. 2026. *Express middleware*. [online] Available at: https://expressjs.com/en/resources/middleware/ [Accessed 1 September 2026].
+
+Express-Validator. 2026. *express-validator*. [online] Available at: https://express-validator.github.io/docs/ [Accessed 1 September 2026].
+
+Jones, M., Bradley, J. and Sakimura, N. 2015. *RFC 7519: JSON Web Token (JWT)*.
+
+Node.js. 2026. *Node.js v26.8.1 documentation*. [online] Available at: https://nodejs.org/api/https.html [Accessed 1 September 2026].
+
+OpenAI. 2026. *ChatGPT (GPT-5.6 Luna)*. Available at: https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 [Accessed 7 September 2026].
+
+OWASP. 2026. *Input Validation Cheat Sheet*. [online] Available at: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet [Accessed 1 September 2026].
+
+OWASP. 2026. *Password Storage Cheat Sheet*. [online] Available at: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet [Accessed 1 September 2026].
+
+OWASP. 2026. *REST Security Cheat Sheet*. [online] Available at: https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet [Accessed 1 September 2026].
