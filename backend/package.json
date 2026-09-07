@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "gen-cert": "bash certs/generate-cert.sh"
+    "gen-cert": "bash certs/generate-cert.sh",
+    "postinstall": "node -e \"console.log('\\nNext steps: cp .env.example .env, set JWT_SECRET, then run npm run gen-cert before npm start\\n')\""
   },
   "keywords": ["hustlehub", "express", "jwt", "security"],
   "author": "Lonwabo Gumede (ST10270409)",
