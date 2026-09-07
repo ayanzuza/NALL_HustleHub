@@ -273,6 +273,17 @@ Before reaching sensitive application functionality, requests are subjected to s
 Additionally, the design offers a good starting point for further development. The POE permits Part 1 to utilize an in-memory user store, but because the user storage layer and authentication controllers are separated, the storage mechanism can be changed to a database at a later time without significantly altering the authentication architecture.
 As a result, the final design satisfies the immediate Part 1 needs while offering a structured basis for the extra transactional, marketplace, and security features that will be created in later sections.
 
+## AI Declaration
+
+Generative AI (Anthropic Claude) was used to assist with parts of this submission, including:
+
+- Drafting the initial Express/Node.js backend structure (routing, controllers, middleware)
+- Explaining and implementing JWT authentication and bcrypt password hashing
+- Drafting and refining the README documentation, including the architecture diagram
+- Generating the Postman test collection and troubleshooting local environment setup (HTTPS certificate generation, environment variable configuration)
+
+All AI-assisted output was reviewed, tested, and verified by the group before being included in this submission. The group takes full responsibility for the functionality, accuracy, and originality of the final work submitted, in accordance with the institution's Academic Integrity Policy.
+
 Mermaid MERN Diagram:
 <img width="1368" height="1819" alt="MERMIAD DIAGRAM drawio" src="https://github.com/user-attachments/assets/70e8a18b-7859-488a-9f2a-e6afb90d7959" />
 
