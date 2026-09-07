@@ -261,3 +261,14 @@ requests, since the dev certificate is self-signed.
 - **Part 3:** Tax estimation, financial dashboard, CI/CD (GitHub
   Actions), static analysis, Docker/Docker Compose, structured
   logging, additional security features, final security review.
+
+## AI Declaration
+
+Generative AI (Anthropic Claude) was used to assist with parts of this submission, including:
+
+- Drafting the initial Express/Node.js backend structure (routing, controllers, middleware)
+- Explaining and implementing JWT authentication and bcrypt password hashing
+- Drafting and refining the README documentation, including the architecture diagram
+- Generating the Postman test collection and troubleshooting local environment setup (HTTPS certificate generation, environment variable configuration)
+
+All AI-assisted output was reviewed, tested, and verified by the group before being included in this submission. The group takes full responsibility for the functionality, accuracy, and originality of the final work submitted, in accordance with the institution's Academic Integrity Policy.
