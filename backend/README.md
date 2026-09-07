@@ -354,3 +354,7 @@ bcrypt's cost factor controls how many times the hashing algorithm iterates inte
 - [x] Postman collection covering success and invalid scenarios
 - [ ] Demonstration video recorded and linked
 - [ ] GitHub repository link included in final submission
+
+### Known Dependency Advisory
+
+`npm audit` reports 3 moderate-severity advisories in the `qs` package, pulled in transitively via `body-parser` → `express`. No non-breaking fix is currently published upstream; `npm audit fix --force` would require a major version bump of `express` itself, which was judged too risky to apply this close to submission without full regression testing. This will be revisited in Part 2/3 once the upstream ecosystem publishes a compatible patch.
