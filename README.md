@@ -273,16 +273,21 @@ Before reaching sensitive application functionality, requests are subjected to s
 Additionally, the design offers a good starting point for further development. The POE permits Part 1 to utilize an in-memory user store, but because the user storage layer and authentication controllers are separated, the storage mechanism can be changed to a database at a later time without significantly altering the authentication architecture.
 As a result, the final design satisfies the immediate Part 1 needs while offering a structured basis for the extra transactional, marketplace, and security features that will be created in later sections.
 
-## AI Declaration
+## AI Disclosure
 
-Generative AI (Anthropic Claude) was used to assist with parts of this submission, including:
+# Annexure: Disclosure of AI Usage in my Assessment
 
-- Drafting the initial Express/Node.js backend structure (routing, controllers, middleware)
-- Explaining and implementing JWT authentication and bcrypt password hashing
-- Drafting and refining the README documentation, including the architecture diagram
-- Generating the Postman test collection and troubleshooting local environment setup (HTTPS certificate generation, environment variable configuration)
+## Generative AI Use
 
-All AI-assisted output was reviewed, tested, and verified by the group before being included in this submission. The group takes full responsibility for the functionality, accuracy, and originality of the final work submitted, in accordance with the institution's Academic Integrity Policy.
+| Section(s) within the Assessment         | AI Tool Used     | Purpose / Intention Behind Use                                                                                                                                                                                                                                                                                                          | Date(s) Used     | Link to AI Chat                                                |
+| ---------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
+| Part 1 – Documentation / Mermaid Diagram | ChatGPT (OpenAI) | Guidance on creating and structuring a Mermaid diagram for the HustleHub+ system documentation. ChatGPT was used to explain the Mermaid diagram syntax, structure, and how to represent the required system components and relationships. The generated guidance was reviewed and adapted by me for the requirements of the assessment. | 7 September 2026 | https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 |
+
+## Statement of Responsible AI Use
+
+ChatGPT was used as a supporting tool during the development of the assessment. Its use was limited to obtaining guidance and explanations relating to the structure and implementation of a Mermaid diagram for the HustleHub+ documentation. The AI-generated guidance was reviewed, interpreted, and adapted to suit the requirements of the assessment. The final assessment work, decisions, implementation, and documentation remain my responsibility.
+
+
 
 Mermaid MERN Diagram:
 <img width="1368" height="1819" alt="MERMIAD DIAGRAM drawio" src="https://github.com/user-attachments/assets/70e8a18b-7859-488a-9f2a-e6afb90d7959" />
@@ -296,6 +301,7 @@ Express.js. 2026. Express middleware. [online] Available at: < https://expressjs
 Express-Validator. 2026. express-validator. [online] Available at: < https://express-validator.github.io/docs/ > [Accessed 1 September 2026]
 Jones, M., Bradley, J. and Sakimura, N. 2015. RFC 7519: JSON Web Token (JWT).
 Node.js. 2026. Node.js v26.8.1 documentation. [online]. Available at: < https://nodejs.org/api/https.html > [Accessed 1 September 2026]
+OpenAI. 2026. Chat-GPT (GPT-5.6 Luna). Available at: https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 [Accessed: 1 September 2026]
 OWASP. 2026. Input Validation Cheat Sheet. [online]. Available at: < https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet > [Accessed 1 September 2026]
 OWASP. 2026. Password Storage Cheat Sheet. [online]. Available at: < https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet > [Accessed 1 September 2026]
 OWASP. 2026. REST Security Cheat Sheet. [online]. Available at: < https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet > [Accessed 1 September 2026]
