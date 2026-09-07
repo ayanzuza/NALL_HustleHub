@@ -282,3 +282,7 @@ All AI-assisted output was reviewed, tested, and verified by the group before be
 - Confirm both files exist afterwards: `ls certs/`
 - In PowerShell, `curl` is aliased to `Invoke-WebRequest`, which does not support the `-k` flag. Use `curl.exe` explicitly instead, e.g. `curl.exe -k https://localhost:5443/api/health`.
 - If PowerShell mangles quotes in a JSON request body, write the JSON to a file first and send it with `-d "@file.json"` instead of an inline string.
+
+### Manual Testing Note
+
+When testing endpoints manually outside Postman (e.g. via terminal), remember that Windows PowerShell's built-in `curl` alias does not behave like real curl — always invoke `curl.exe` explicitly on Windows to get standard curl flag support (`-k`, `-X`, `-d`, etc.).
