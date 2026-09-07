@@ -331,3 +331,7 @@ All endpoints return a consistent JSON envelope to make client-side handling pre
 ```
 
 The `errors` array is only present on validation failures (`400` responses). All other error responses (`401`, `404`, `409`, `500`) return just `success` and `message`, with no internal details exposed.
+
+### Why 12 Salt Rounds?
+
+bcrypt's cost factor controls how many times the hashing algorithm iterates internally — each increment doubles the computational work required per hash. 12 rounds was chosen as a balance between security and performance: it is high enough to make brute-force and rainbow-table attacks computationally impractical at scale, while still hashing a single password in well under a second on typical hardware, so registration and login remain responsive. Lower values (e.g. 10) are faster but weaker; significantly higher values (e.g. 15+) meaningfully slow down every login and are generally reserved for systems with stronger hardware guarantees or lower request volume.
