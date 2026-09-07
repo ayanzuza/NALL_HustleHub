@@ -1,7 +1,7 @@
 # HustleHub+ — Secure Freelance Marketplace Platform
 
 **Modules:** INSY7314/w and APDS7311/w
-**Student:** Lonwabo Gumede (ST10270409)
+**Student:** Lonwabo Gumede, Ayabonga Nzuza, Luke James Lutchmiah, Nonjabulo Mathenjwa
 **Part:** 1 — Secure Foundations
 
 ---
