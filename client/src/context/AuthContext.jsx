@@ -4,8 +4,12 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const login = (userData, token) => {
@@ -27,4 +31,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+// Falls back to a logged-out stub when used outside the provider (e.g. in unit tests).
+export const useAuth = () =>
+  useContext(AuthContext) ?? { user: null, login: () => {}, logout: () => {} };
