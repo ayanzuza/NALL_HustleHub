@@ -808,6 +808,13 @@ To execute the test suite locally against the running HTTPS server:
    cd backend
    npm run dev
 
+
+## 📺 Project Demonstration Video (Part 2)
+
+Watch our full-stack system walkthrough and feature demonstration video:
+👉 **[HustleHub+ Part 2 Demonstration Video](https://youtu.be/kJP1Gzv9_ao)**
+
+
 ### Part 3
 
 Planned functionality includes:
