@@ -779,10 +779,11 @@ The HustleHub+ frontend is built using **React, Vite, Tailwind CSS, and React Ro
 Automated component and user-flow testing is executed using **Vitest** and **React Testing Library** under a `jsdom` environment. The test suite covers component rendering, routing mocks, and form validation checks.
 
 To run the frontend test suite locally:
-```bash
+
 cd client
 npm install
 npm run test
+
 
 ### Part 3
 
