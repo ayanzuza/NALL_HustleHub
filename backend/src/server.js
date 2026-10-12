@@ -2,6 +2,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const app = require('./app');
+const { connectDb } = require('./config/db');
 const { port, sslKeyPath, sslCertPath } = require('./config/env');
 
 const keyPath = path.resolve(__dirname, '..', sslKeyPath);
@@ -14,12 +15,17 @@ if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
   process.exit(1);
 }
 
-const sslOptions = {
-  key: fs.readFileSync(keyPath),
-  cert: fs.readFileSync(certPath),
-};
+const sslOptions = { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
 
-https.createServer(sslOptions, app).listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`HustleHub+ API listening on https://localhost:${port}`);
-});
+(async () => {
+  try {
+    await connectDb();
+    https.createServer(sslOptions, app).listen(port, () => {
+      // eslint-disable-next-line no-console
+      console.log(`HustleHub+ API listening on https://localhost:${port}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err.message);
+    process.exit(1);
+  }
+})();
