@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api, { errorMessage } from '../api';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -8,7 +9,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -17,16 +18,16 @@ export default function Login() {
       return;
     }
 
-    // Mock Login Verification
-    const mockUser = {
-      id: 'usr_101',
-      name: 'Aya Nzuza',
-      email: formData.email.trim(),
-      role: formData.email.includes('freelancer') ? 'Freelancer' : 'Client',
-    };
-
-    login(mockUser, 'mock-jwt-token-12345');
-    navigate('/gigs');
+    try {
+      const res = await api.post('/auth/login', {
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+      login(res.data.data.user, res.data.data.token);
+      navigate('/gigs');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   };
 
   return (

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api, { errorMessage } from '../api';
 
 function Register() {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Client' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'client' });
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -20,16 +21,24 @@ function Register() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    // Mirrors the server's password policy; the server remains authoritative.
+    const pw = formData.password;
+    if (pw.length < 8 || !/[a-z]/.test(pw) || !/[A-Z]/.test(pw) || !/\d/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+      setError('Password needs at least 8 characters with upper and lower case, a number and a symbol.');
       return;
     }
 
-    const mockUser = { id: Date.now(), name: formData.name.trim(), email: formData.email.trim(), role: formData.role };
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    localStorage.setItem('token', 'mock-jwt-token-xyz');
-    
-    navigate('/login');
+    try {
+      await api.post('/auth/register', {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: formData.role,
+      });
+      navigate('/login');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   };
 
   return (
@@ -76,8 +85,8 @@ function Register() {
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             >
-              <option value="Client">Client (Hire Freelancers)</option>
-              <option value="Freelancer">Freelancer (Offer Services)</option>
+              <option value="client">Client (Hire Freelancers)</option>
+              <option value="freelancer">Freelancer (Offer Services)</option>
             </select>
           </div>
           <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition">
