@@ -7,6 +7,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Gigs from './pages/Gigs';
 import Booking from './pages/Booking';
+import MyGigs from './pages/MyGigs';
+import Bookings from './pages/Bookings';
+import Income from './pages/Income';
+import RequireAuth from './components/RequireAuth';
 
 import './App.css';
 
@@ -35,12 +39,27 @@ function App() {
           {/* Main application pages */}
           <Route
             path="/gigs"
-            element={<Gigs />}
+            element={<RequireAuth><Gigs /></RequireAuth>}
           />
 
           <Route
             path="/booking/:id"
-            element={<Booking />}
+            element={<RequireAuth roles={['client']}><Booking /></RequireAuth>}
+          />
+
+          <Route
+            path="/my-gigs"
+            element={<RequireAuth roles={['freelancer']}><MyGigs /></RequireAuth>}
+          />
+
+          <Route
+            path="/bookings"
+            element={<RequireAuth><Bookings /></RequireAuth>}
+          />
+
+          <Route
+            path="/income"
+            element={<RequireAuth roles={['freelancer']}><Income /></RequireAuth>}
           />
 
           {/* Redirect unknown routes */}
