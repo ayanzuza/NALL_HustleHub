@@ -765,22 +765,24 @@ The advisory will be reviewed again during Parts 2 and 3, when dependency update
 ## 24. Roadmap
 
 ### Part 2
+## 1. React Frontend & Automated Testing (Part 2)
 
-Planned functionality includes:
+The HustleHub+ frontend is built using **React, Vite, Tailwind CSS, and React Router**, providing a responsive and secure client-side interface that integrates seamlessly with backend security controls and RBAC.
 
-* MongoDB persistence
-* Mongoose integration
-* Gig CRUD
-* Booking functionality
-* Transaction records
-* Income tracking
-* Role-based access control
-* React frontend
-* Rate limiting
-* Restricted CORS configuration
-* Content Security Policy
-* Newman API testing
-* Frontend testing
+### 1.1 Core Frontend Features
+- **Authentication UI:** Secure registration and login screens with client-side validation and graceful error handling.
+- **Marketplace Browsing:** Dynamic gig discovery, search, and detail views for clients.
+- **Booking Interface:** Interactive booking workflow with simulated confirmation states.
+- **Security Alignment:** Ensures tokens are handled securely and prevents sensitive data exposure in the UI.
+
+### 1.2 Automated Frontend Testing
+Automated component and user-flow testing is executed using **Vitest** and **React Testing Library** under a `jsdom` environment. The test suite covers component rendering, routing mocks, and form validation checks.
+
+To run the frontend test suite locally:
+```bash
+cd client
+npm install
+npm run test
 
 ### Part 3
 
