@@ -1,0 +1,216 @@
+
+> hustlehub-backend@1.0.0 test:newman
+> newman run postman/HustleHub-Part2.postman_collection.json --insecure
+
+(node:125336) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+newman
+
+HustleHub+ - Part 2 (Secure Stack)
+
+→ 00 Health Check
+  GET https://localhost:5443/api/health [200 OK, 768B, 77ms]
+  √  Status is 200
+
+→ 01 Register Freelancer A
+  POST https://localhost:5443/api/auth/register [201 Created, 1.29kB, 804ms]
+  √  Status is 201
+  √  JWT issued
+  √  Hash never exposed
+
+→ 02 Register Freelancer B
+  POST https://localhost:5443/api/auth/register [201 Created, 1.29kB, 641ms]
+  √  Status is 201
+
+→ 03 Register Client
+  POST https://localhost:5443/api/auth/register [201 Created, 1.28kB, 526ms]
+  √  Status is 201
+
+→ 04 Register - admin role rejected
+  POST https://localhost:5443/api/auth/register [400 Bad Request, 947B, 5ms]
+  √  Status is 400
+
+→ 05 Register - duplicate email
+  POST https://localhost:5443/api/auth/register [409 Conflict, 886B, 45ms]
+  √  Status is 409
+
+→ 06 Login Client - success
+  POST https://localhost:5443/api/auth/login [200 OK, 1.27kB, 560ms]
+  √  Status is 200
+  √  JWT issued
+
+→ 07 Login - wrong password
+  POST https://localhost:5443/api/auth/login [401 Unauthorized, 874B, 502ms]
+  √  Status is 401
+  √  Generic message
+
+→ 08 Login - NoSQL operator injection rejected
+  POST https://localhost:5443/api/auth/login [400 Bad Request, 1.06kB, 5ms]
+  √  Status is 400
+
+→ 09 Protected route - no token
+  GET https://localhost:5443/api/users/me [401 Unauthorized, 876B, 4ms]
+  √  Status is 401
+
+→ 10 Protected route - valid token
+  GET https://localhost:5443/api/users/me [200 OK, 1.04kB, 44ms]
+  √  Status is 200
+  √  Returns the caller
+
+→ 11 Client cannot create a gig (RBAC)
+  POST https://localhost:5443/api/gigs [403 Forbidden, 899B, 6ms]
+  √  Status is 403
+
+→ 12 Freelancer A creates a gig
+  POST https://localhost:5443/api/gigs [201 Created, 1.16kB, 46ms]
+  √  Status is 201
+  √  Owned by A
+
+→ 13 Create gig - invalid price rejected
+  POST https://localhost:5443/api/gigs [400 Bad Request, 956B, 5ms]
+  √  Status is 400
+
+→ 14 Create gig - script tag sanitised
+  POST https://localhost:5443/api/gigs [201 Created, 1.16kB, 47ms]
+  √  Status is 201
+  √  No script in stored title
+
+→ 15 Client browses gigs
+  GET https://localhost:5443/api/gigs [200 OK, 1.76kB, 44ms]
+  √  Status is 200
+  √  Gig is listed
+
+→ 16 Browse gigs - bad query rejected
+  GET https://localhost:5443/api/gigs?limit=9999 [400 Bad Request, 942B, 4ms]
+  √  Status is 400
+
+→ 17 Get single gig
+  GET https://localhost:5443/api/gigs/6accd8c3197eea63f6573b31 [200 OK, 1.13kB, 51ms]
+  √  Status is 200
+
+→ 18 Get gig - malformed id
+  GET https://localhost:5443/api/gigs/not-an-id [400 Bad Request, 918B, 3ms]
+  √  Status is 400
+
+→ 19 Freelancer B cannot update A's gig
+  PUT https://localhost:5443/api/gigs/6accd8c3197eea63f6573b31 [403 Forbidden, 895B, 44ms]
+  √  Status is 403
+
+→ 20 Freelancer A updates own gig
+  PUT https://localhost:5443/api/gigs/6accd8c3197eea63f6573b31 [200 OK, 1.16kB, 90ms]
+  √  Status is 200
+  √  Price updated
+
+→ 21 Update cannot reassign ownership
+  PUT https://localhost:5443/api/gigs/6accd8c3197eea63f6573b31 [200 OK, 1.16kB, 86ms]
+  √  Status is 200
+  √  Owner unchanged
+
+→ 22 Freelancer A lists own gigs
+  GET https://localhost:5443/api/gigs/mine [200 OK, 1.46kB, 43ms]
+  √  Status is 200
+  √  Only A's gigs
+
+→ 23 Freelancer cannot book (RBAC)
+  POST https://localhost:5443/api/bookings [403 Forbidden, 896B, 4ms]
+  √  Status is 403
+
+→ 24 Booking - invalid gigId rejected
+  POST https://localhost:5443/api/bookings [400 Bad Request, 934B, 5ms]
+  √  Status is 400
+
+→ 25 Client books gig (booking + transaction created)
+  POST https://localhost:5443/api/bookings [201 Created, 1.57kB, 134ms]
+  √  Status is 201
+  √  Booking links client and freelancer
+  √  Transaction created from server-side price (tampered amount ignored)
+
+→ 26 Client lists own bookings
+  GET https://localhost:5443/api/bookings [200 OK, 1.19kB, 42ms]
+  √  Status is 200
+  √  Contains booking
+
+→ 27 Freelancer A sees the booking
+  GET https://localhost:5443/api/bookings [200 OK, 1.19kB, 44ms]
+  √  Status is 200
+  √  Contains booking
+
+→ 28 Freelancer B sees no bookings
+  GET https://localhost:5443/api/bookings [200 OK, 883B, 44ms]
+  √  Status is 200
+  √  Empty
+
+→ 29 Freelancer B cannot read A's booking
+  GET https://localhost:5443/api/bookings/6accd8c5197eea63f6573b33 [403 Forbidden, 897B, 49ms]
+  √  Status is 403
+
+→ 30 Client reads own booking
+  GET https://localhost:5443/api/bookings/6accd8c5197eea63f6573b33 [200 OK, 1.16kB, 44ms]
+  √  Status is 200
+
+→ 31 Client lists transactions
+  GET https://localhost:5443/api/transactions [200 OK, 1.24kB, 43ms]
+  √  Status is 200
+  √  Has transaction of 600
+
+→ 32 Freelancer A income
+  GET https://localhost:5443/api/income [200 OK, 1.29kB, 42ms]
+  √  Status is 200
+  √  Income tracked for A
+
+→ 33 Freelancer B income is zero
+  GET https://localhost:5443/api/income [200 OK, 940B, 43ms]
+  √  Status is 200
+  √  No income for B
+
+→ 34 Client cannot view income (RBAC)
+  GET https://localhost:5443/api/income [403 Forbidden, 899B, 3ms]
+  √  Status is 403
+
+→ 35 Client cannot use admin routes (RBAC)
+  GET https://localhost:5443/api/admin/users [403 Forbidden, 899B, 4ms]
+  √  Status is 403
+
+→ 36 Freelancer B cannot delete A's gig
+  DELETE https://localhost:5443/api/gigs/6accd8c3197eea63f6573b31 [403 Forbidden, 895B, 45ms]
+  √  Status is 403
+
+→ 37 Freelancer A deletes own gig
+  DELETE https://localhost:5443/api/gigs/6accd8c3197eea63f6573b32 [200 OK, 853B, 91ms]
+  √  Status is 200
+
+→ 38 Deleted gig is gone
+  GET https://localhost:5443/api/gigs/6accd8c3197eea63f6573b32 [404 Not Found, 863B, 44ms]
+  √  Status is 404
+
+→ 39 Malformed JSON gives a safe error
+  POST https://localhost:5443/api/auth/login [400 Bad Request, 783B, 4ms]
+  √  Status is 400
+  √  No parser internals leaked
+
+→ 40 Security headers present (Helmet + CSP)
+  GET https://localhost:5443/api/health [200 OK, 768B, 5ms]
+  √  Status is 200
+  √  CSP header
+  √  HSTS header
+  √  No X-Powered-By
+
+┌─────────────────────────┬────────────────────┬───────────────────┐
+│                         │           executed │            failed │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│              iterations │                  1 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│                requests │                 41 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│            test-scripts │                 41 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│      prerequest-scripts │                  1 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│              assertions │                 64 │                 0 │
+├─────────────────────────┴────────────────────┴───────────────────┤
+│ total run duration: 7.8s                                         │
+├──────────────────────────────────────────────────────────────────┤
+│ total data received: 10.1kB (approx)                             │
+├──────────────────────────────────────────────────────────────────┤
+│ average response time: 106ms [min: 3ms, max: 804ms, s.d.: 192ms] │
+└──────────────────────────────────────────────────────────────────┘
