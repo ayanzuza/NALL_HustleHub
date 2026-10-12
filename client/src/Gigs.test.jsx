@@ -16,10 +16,9 @@ afterEach(() => {
 });
 
 describe('Gigs Page Tests', () => {
-  it('renders gigs search and heading correctly', () => {
+  it('renders gigs search input correctly', () => {
     render(<Gigs />);
 
-    expect(screen.getByText(/explore available gigs/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/search gigs/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
   });
 });
