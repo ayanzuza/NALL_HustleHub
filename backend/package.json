@@ -1,15 +1,24 @@
 {
   "name": "hustlehub-backend",
   "version": "1.0.0",
-  "description": "HustleHub+ secure backend foundations (Part 1) - INSY7314/APDS7311 POE",
+  "description": "HustleHub+ secure backend (Part 2: gigs, bookings, transactions, RBAC) - INSY7314/APDS7311 POE",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "gen-cert": "bash certs/generate-cert.sh",
-    "postinstall": "node -e \"console.log('\\nNext steps: cp .env.example .env, set JWT_SECRET, then run npm run gen-cert before npm start\\n')\""
+    "seed:admin": "node src/scripts/seedAdmin.js",
+    "test": "jest --runInBand",
+    "test:fake-server": "node tests/support/devServerFake.js",
+    "test:newman": "newman run postman/HustleHub-Part2.postman_collection.json --insecure",
+    "postinstall": "node -e \"console.log('\\nNext steps: cp .env.example .env, set JWT_SECRET and MONGO_URI, then run npm run gen-cert before npm start\\n')\""
   },
-  "keywords": ["hustlehub", "express", "jwt", "security"],
+  "keywords": [
+    "hustlehub",
+    "express",
+    "jwt",
+    "security"
+  ],
   "author": "Lonwabo Gumede (ST10270409)",
   "license": "ISC",
   "engines": {
@@ -20,12 +29,31 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.7.1",
     "express-validator": "^7.2.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0"
+    "mongoose": "^9.11.1",
+    "morgan": "^1.10.0",
+    "xss": "^1.0.15"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "jest": "^30.5.2",
+    "newman": "^6.2.3",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.3.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/support/env.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/support/mockModels.js"
+    ],
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js"
+    ]
   }
 }
