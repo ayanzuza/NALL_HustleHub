@@ -943,7 +943,7 @@ The resulting implementation therefore satisfies the immediate Part 1 secure-fou
 | Section(s) within the Assessment         | AI Tool Used     | Purpose / Intention Behind Use                                                                                                                                                                                                                                                                                                      | Date(s) Used     | Link to AI Chat                                                |
 | ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
 | Part 1 – Documentation / Mermaid Diagram | ChatGPT (OpenAI) | Guidance on creating and structuring a Mermaid diagram for the HustleHub+ system documentation. ChatGPT was used to explain Mermaid diagram syntax, structure, and how to represent the required system components and relationships. The generated guidance was reviewed and adapted by me for the requirements of the assessment. | 7 September 2026 | https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 |
-| Part 1 and Part 2 – Backend code, tests, Postman/Newman collection, React integration, git and debugging guidance, README drafting | Claude (Anthropic) | Used as a coding and documentation assistant by Lonwabo Gumede: generating and reviewing backend code (Mongoose models, RBAC, sanitisation, rate limiting, error handling), Jest tests, the Part 2 Postman collection, wiring the React pages to the API, README sections, and step-by-step git and troubleshooting help. All code was run and tested by me (41 backend tests, Newman 64/64 against MongoDB Atlas, frontend tests) and reviewed before being committed. | Part 1 (September 2026) and 12 October 2026 | <add the Claude chat share link here> |
+| Part 1 and Part 2 – Backend code, tests, Postman/Newman collection, React integration, git and debugging guidance, README drafting | Claude (Anthropic) | Used as a coding and documentation assistant by Lonwabo Gumede: generating and reviewing backend code (Mongoose models, RBAC, sanitisation, rate limiting, error handling), Jest tests, the Part 2 Postman collection, wiring the React pages to the API, README sections, and step-by-step git and troubleshooting help. All code was run and tested by me (41 backend tests, Newman 64/64 against MongoDB Atlas, frontend tests) and reviewed before being committed. | Part 1 (September 2026) and 12 October 2026 | Available on request |
 
 
 ### Statement of Responsible AI Use
@@ -992,7 +992,7 @@ ChatGPT was used for guidance on the Mermaid diagram syntax and structure for th
 * [x] Frontend automated tests (Vitest and React Testing Library)
 * [x] README updated (features, security measures, run instructions, testing)
 * [ ] Screenshots committed to `backend/docs/screenshots`
-* [ ] Part 2 demonstration video recorded and linked: <add video link here>
+* [ ] Part 2 demonstration video recorded and linked: link to be added by the team
 * [ ] GitHub repository link included in the final submission
 
 ---
