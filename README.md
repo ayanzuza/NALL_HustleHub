@@ -884,6 +884,13 @@ The frontend is built with **React, Vite, Tailwind CSS and React Router**.
 * **Freelancer pages:** My gigs (create, pause/activate, delete), bookings and transactions, and income.
 * **Security alignment:** the JWT is attached to API calls and kept in `localStorage`. This is a recorded trade-off: script on the page could read it, which is mitigated by React's output escaping (no `dangerouslySetInnerHTML` is used), server-side sanitisation and the API's CSP. Route guards in the UI are a convenience only; the backend enforces authentication and RBAC on every request.
 
+
+## 📺 Project Demonstration Video (Part 2)
+
+Watch our full-stack system walkthrough and feature demonstration video:
+👉 **[HustleHub+ Part 2 Demonstration Video](https://youtu.be/kJP1Gzv9_ao)**
+
+
 ### Part 3
 
 Planned functionality includes:
