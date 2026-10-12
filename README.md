@@ -784,6 +784,29 @@ cd client
 npm install
 npm run test
 
+## Automated API Testing (Postman & Newman)
+
+To ensure the reliability, security, and accuracy of the HustleHub+ backend, an automated API test collection was structured and executed using Postman and Newman CLI.
+
+### Test Suite Structure
+The test suite (`HustleHub_Part2.postman_collection.json`) covers core system endpoints across authentication, marketplace operations, and system health checks:
+
+* **Auth & Security:** Evaluates user registration (`POST /api/auth/register`) and user authentication (`POST /api/auth/login`).
+* **Role-Based Access Control (RBAC):** Verifies that protected routes (`/api/users/me`, `/api/gigs`, `/api/bookings`) properly restrict unauthenticated requests and return `401 Unauthorized` responses when valid tokens are missing.
+* **Gigs & Marketplace:** Tests public gig discovery (`GET /api/gigs`) and authorized gig creation.
+* **Bookings & Income:** Validates booking creation and freelancer income data endpoints.
+* **Health Check:** Verifies system operational status (`GET /api/health`).
+
+---
+
+### Local Test Execution
+
+To execute the test suite locally against the running HTTPS server:
+
+1. **Ensure the local MongoDB instance and backend server are active:**
+   ```bash
+   cd backend
+   npm run dev
 
 ### Part 3
 
