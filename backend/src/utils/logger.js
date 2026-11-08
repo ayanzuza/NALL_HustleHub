@@ -42,6 +42,7 @@ const redactFormat = winston.format((info) => {
     if (key === 'level' || key === 'message' || key === 'timestamp') continue;
     info[key] = SENSITIVE_KEYS.test(key) ? '[REDACTED]' : redact(info[key]);
   }
+  info.dt = info.timestamp;
   return info;
 });
 
