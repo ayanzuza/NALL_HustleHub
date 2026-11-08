@@ -67,6 +67,22 @@ function makeModel({ hidden = [], unique = [], defaults = {} } = {}) {
     },
     findOne: (filter) => new Query(() => store.find((d) => matches(d, filter)) || null),
     findById: (id) => new Query(() => store.find((d) => d.id === String(id)) || null),
+    // Supports the $inc / $set / $unset operators the controllers use.
+    findOneAndUpdate(filter, update) {
+      return new Query(() => {
+        const doc = store.find((d) => matches(d, filter));
+        if (!doc) return null;
+        Object.entries(update.$inc || {}).forEach(([k, v]) => { doc[k] = (doc[k] || 0) + v; });
+        Object.assign(doc, update.$set || {});
+        Object.keys(update.$unset || {}).forEach((k) => { delete doc[k]; });
+        doc.updatedAt = new Date();
+        return doc;
+      });
+    },
+    async updateOne(filter, update) {
+      const doc = await this.findOneAndUpdate(filter, update);
+      return { matchedCount: doc ? 1 : 0 };
+    },
     async deleteOne(filter) {
       const i = store.findIndex((d) => matches(d, filter));
       if (i >= 0) store.splice(i, 1);
@@ -78,8 +94,13 @@ function makeModel({ hidden = [], unique = [], defaults = {} } = {}) {
 }
 
 module.exports = {
-  User: makeModel({ hidden: ['passwordHash'], unique: ['email'], defaults: { role: 'client' } }),
+  User: makeModel({
+    hidden: ['passwordHash', 'failedLoginAttempts', 'lockCount', 'lockUntil'],
+    unique: ['email'],
+    defaults: { role: 'client', failedLoginAttempts: 0, lockCount: 0 },
+  }),
   Gig: makeModel({ defaults: { status: 'active' } }),
-  Booking: makeModel({ defaults: { status: 'confirmed', note: '' } }),
+  Booking: makeModel({ defaults: { status: 'pending', note: '', decisionNote: '' } }),
   Transaction: makeModel({ unique: ['reference'], defaults: { currency: 'ZAR', status: 'simulated-paid' } }),
+  RevokedToken: makeModel({ unique: ['jti'] }),
 };

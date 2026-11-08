@@ -13,7 +13,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'dev-fake-server-secret';
 process.env.RATE_LIMIT_AUTH_MAX = process.env.RATE_LIMIT_AUTH_MAX || '500';
 
 const fake = require('./fakeModels');
-for (const name of ['User', 'Gig', 'Booking', 'Transaction']) {
+for (const name of ['User', 'Gig', 'Booking', 'Transaction', 'RevokedToken']) {
   const file = require.resolve(`../../src/models/${name}`);
   const mod = new Module(file);
   mod.filename = file;

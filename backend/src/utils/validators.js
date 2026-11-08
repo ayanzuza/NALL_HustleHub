@@ -91,8 +91,33 @@ const bookingValidation = [
     .isLength({ max: 500 }).withMessage('Note must be at most 500 characters'),
 ];
 
+const { supportedTaxYears } = require('./taxEngine');
+
+const BOOKING_STATUSES = ['pending', 'approved', 'rejected', 'cancelled', 'completed'];
+
+const bookingListValidation = [
+  query('status').optional().isIn(BOOKING_STATUSES).withMessage(`status must be one of: ${BOOKING_STATUSES.join(', ')}`),
+];
+
+const bookingDecisionValidation = [
+  ...idParamValidation,
+  body('note').optional().isString().withMessage('Note must be text').trim()
+    .isLength({ max: 500 }).withMessage('Note must be at most 500 characters'),
+];
+
+const taxYearValidation = [
+  query('taxYear').optional().isInt().withMessage('taxYear must be a whole number')
+    .toInt()
+    .custom((v) => supportedTaxYears().includes(v))
+    .withMessage(`taxYear must be one of: ${supportedTaxYears().join(', ')}`),
+];
+
 module.exports = {
   CATEGORIES,
+  taxYearValidation,
+  BOOKING_STATUSES,
+  bookingListValidation,
+  bookingDecisionValidation,
   registerValidation,
   loginValidation,
   idParamValidation,
