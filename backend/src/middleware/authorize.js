@@ -2,9 +2,12 @@
  * Role-based access control. Must run AFTER authenticate (needs req.user).
  * Usage: router.post('/', authenticate, authorize('freelancer'), handler)
  */
+const { logEvent } = require('../utils/logger');
+
 function authorize(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
+      logEvent('warn', 'authz.denied', req, { method: req.method, path: req.originalUrl.split('?')[0], needed: allowedRoles });
       return res.status(403).json({
         success: false,
         message: 'You do not have permission to perform this action',

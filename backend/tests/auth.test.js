@@ -5,10 +5,10 @@ const { User } = require('./support/fakeModels');
 const { registerUser, auth, PASSWORD } = require('./support/helpers');
 
 describe('Authentication', () => {
-  test('registration issues a JWT containing only id and role, and never returns the hash', async () => {
+  test('registration issues a JWT containing only id, role and a unique token id (jti), and never returns the hash', async () => {
     const { token, user } = await registerUser(app, 'freelancer');
     const payload = jwt.decode(token);
-    expect(Object.keys(payload).sort()).toEqual(['exp', 'iat', 'id', 'role']);
+    expect(Object.keys(payload).sort()).toEqual(['exp', 'iat', 'id', 'jti', 'role']);
     expect(payload.role).toBe('freelancer');
     expect(payload.exp - payload.iat).toBe(3600);
     expect(JSON.stringify(user)).not.toMatch(/passwordHash|StrongPass1/);

@@ -9,6 +9,9 @@ module.exports = function cleanJson(schema) {
       delete ret._id;
       delete ret.__v;
       delete ret.passwordHash;
+      delete ret.failedLoginAttempts;
+      delete ret.lockCount;
+      delete ret.lockUntil;
       return ret;
     },
   });

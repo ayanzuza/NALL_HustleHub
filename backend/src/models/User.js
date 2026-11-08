@@ -8,6 +8,10 @@ const userSchema = new mongoose.Schema(
     // select:false -> the hash is only loaded when explicitly requested (login).
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ['client', 'freelancer', 'admin'], default: 'client' },
+    // Account lockout state (brute-force protection). Never sent to clients.
+    failedLoginAttempts: { type: Number, default: 0, select: false },
+    lockCount: { type: Number, default: 0, select: false },
+    lockUntil: { type: Date, select: false },
   },
   { timestamps: true }
 );
