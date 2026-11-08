@@ -1,5 +1,6 @@
 const http = require('http');
 const { nodeEnv } = require('../config/env');
+const { logEvent } = require('../utils/logger');
 
 /**
  * Centralised Error Handling
@@ -14,13 +15,6 @@ function notFound(req, res) {
 
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
-  // eslint-disable-next-line no-console
-  console.error(`[ERROR] ${req.method} ${req.originalUrl} -`, err.message);
-  if (nodeEnv === 'development') {
-    // eslint-disable-next-line no-console
-    console.error(err.stack);
-  }
-
   let status = 500;
   let message = 'An unexpected error occurred';
 
@@ -43,6 +37,17 @@ function errorHandler(err, req, res, next) {
     status = err.status;
     message = http.STATUS_CODES[err.status] || 'Request error';
   }
+
+  // Full detail goes to the server log only (stack trace outside production
+  // too, since logs are private); the client only ever gets the safe message.
+  logEvent(status >= 500 ? 'error' : 'warn', 'error.handled', req, {
+    status,
+    method: req.method,
+    path: req.originalUrl.split('?')[0],
+    errorName: err.name,
+    errorMessage: err.message,
+    ...(nodeEnv !== 'production' && status >= 500 ? { stack: err.stack } : {}),
+  });
 
   res.status(status).json({ success: false, message });
 }

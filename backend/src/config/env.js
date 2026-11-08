@@ -31,6 +31,21 @@ module.exports = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  // Structured logging. Cloud shipping is optional and enabled only when
+  // both LOG_HTTP_HOST and LOG_HTTP_TOKEN are set.
+  logging: {
+    level: process.env.LOG_LEVEL || 'info',
+    httpHost: process.env.LOG_HTTP_HOST || '',
+    httpPath: process.env.LOG_HTTP_PATH || '/',
+    httpToken: process.env.LOG_HTTP_TOKEN || '',
+  },
+  // Account lockout: after `threshold` consecutive failed logins the account
+  // is locked for baseMs, doubling on each further lock up to maxMs.
+  lockout: {
+    threshold: num(process.env.LOCKOUT_THRESHOLD, 5),
+    baseMs: num(process.env.LOCKOUT_BASE_MS, 15 * 60 * 1000),
+    maxMs: num(process.env.LOCKOUT_MAX_MS, 24 * 60 * 60 * 1000),
+  },
   rateLimit: {
     windowMs: num(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
     authMax: num(process.env.RATE_LIMIT_AUTH_MAX, 20),
