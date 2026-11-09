@@ -1,0 +1,24 @@
+e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install client dependencies & Playwright browsers
+        run: |
+          cd client
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E Tests
+        run: |
+          cd client
+          npx playwright test
+        env:
+          CI: true
