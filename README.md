@@ -2,7 +2,11 @@
 
 **Modules:** INSY7314/w and APDS7311/w
 **Student:** Lonwabo Gumede, Ayabonga Nzuza, Luke James Lutchmiah, Nonjabulo Mathenjwa
-**Parts:** 1 — Secure Foundations; 2 — Secure Stack
+**Parts:** 1 — Secure Foundations; 2 — Secure Stack; 3 — DevSecOps, Monitoring and Finalisation
+
+**Part 3 demonstration video:** [HustleHub+ Part 3 walkthrough](REPLACE-WITH-PART-3-VIDEO-LINK)  
+**Run everything with Docker:** see [section 17.3](#173-docker-compose-local-demonstration)  
+**CI pipeline, static analysis and evidence:** see [section 24E](#24e-continuous-integration-and-deployment-notes)
 
 ## Table of Contents
 
@@ -250,30 +254,37 @@ Validation failures are returned directly by `validateRequest`; errors thrown in
 
 ```text
 NALL_HustleHub/
+├── .github/workflows/ci.yml     GitHub Actions pipeline (tests, Newman, audit, Semgrep, Docker build)
+├── docker-compose.yml           Orchestrates MongoDB, the API and the client
 ├── backend/
+│   ├── Dockerfile               API image (Node 20, non-root user)
 │   ├── certs/
 │   │   └── generate-cert.sh
-│   ├── docs/
-│   │   └── newman-part2-output.txt
+│   ├── docs/                    api-contract-part3.md, frontend-csp-recommendation.md,
+│   │   │                        readme-sections/, newman-part2-output.txt
+│   │   └── evidence/            screenshots: logging platform, pipeline, Newman, Semgrep, Docker, app
 │   ├── postman/
 │   │   ├── HustleHub-Part1.postman_collection.json
 │   │   └── HustleHub-Part2.postman_collection.json
 │   ├── src/
-│   │   ├── config/        env.js, db.js
+│   │   ├── config/        env.js, db.js, taxTables.js
 │   │   ├── controllers/   authController, gigController, bookingController,
 │   │   │                  incomeController, adminController
 │   │   ├── middleware/    authenticate, authorize, validateRequest, sanitize,
-│   │   │                  rateLimiter, errorHandler
-│   │   ├── models/        User, Gig, Booking, Transaction, cleanJson
+│   │   │                  rateLimiter, errorHandler, requestId
+│   │   ├── models/        User, Gig, Booking, Transaction, RevokedToken, cleanJson
 │   │   ├── routes/        auth, user, gig, booking, transaction, income, admin
 │   │   ├── scripts/       seedAdmin.js
-│   │   ├── utils/         validators.js
+│   │   ├── utils/         validators.js, taxEngine.js, logger.js
 │   │   ├── app.js
 │   │   └── server.js
 │   ├── tests/             Jest + Supertest suites and tests/support (in-memory model fakes)
 │   ├── .env.example
 │   └── package.json
 ├── client/                React frontend (Vite, Tailwind, Vitest)
+│   ├── Dockerfile         multi-stage build served by unprivileged nginx
+│   └── nginx.conf         security headers and /api proxy to the API container
+├── .env.docker.example    variables for docker compose
 ├── HustleHub_Part2.postman_collection.json   (frontend/API collection and Newman report)
 ├── postman-report.html
 └── README.md
@@ -291,7 +302,8 @@ The project follows a layered structure so that routing, controllers, middleware
 | ------ | -------- | ----- | ------- |
 | GET | `/api/health` | public | Health check |
 | POST | `/api/auth/register` | public (rate limited) | Register as `client` or `freelancer`; returns user and JWT |
-| POST | `/api/auth/login` | public (rate limited) | Log in; returns user and JWT |
+| POST | `/api/auth/login` | public (rate limited) | Log in; returns user and JWT. Repeated failures lock the account (section 24B) |
+| POST | `/api/auth/logout` | any authenticated | Revoke the token used for the request (section 24B) |
 | GET | `/api/users/me` | any authenticated | Current user's profile |
 | GET | `/api/gigs` | any authenticated | Browse active gigs (`?category=&page=&limit=`) |
 | GET | `/api/gigs/mine` | freelancer | The caller's own gigs (any status) |
@@ -299,11 +311,16 @@ The project follows a layered structure so that routing, controllers, middleware
 | POST | `/api/gigs` | freelancer | Create a gig |
 | PUT | `/api/gigs/:id` | freelancer (owner) | Update own gig |
 | DELETE | `/api/gigs/:id` | freelancer (owner) | Delete own gig |
-| POST | `/api/bookings` | client (rate limited) | Book a gig; creates a booking and a simulated transaction |
+| POST | `/api/bookings` | client (rate limited) | Request a gig; creates a **pending** booking (no transaction yet) |
 | GET | `/api/bookings` | any authenticated | Role-scoped list: client = own bookings, freelancer = bookings of their gigs, admin = all |
 | GET | `/api/bookings/:id` | participants, admin | One booking |
+| PATCH | `/api/bookings/:id/approve` | freelancer (gig owner) | Approve a pending booking; creates the simulated transaction exactly once |
+| PATCH | `/api/bookings/:id/reject` | freelancer (gig owner) | Reject a pending booking |
+| PATCH | `/api/bookings/:id/complete` | freelancer (gig owner) | Mark an approved booking completed |
+| PATCH | `/api/bookings/:id/cancel` | client (booking owner) | Cancel a booking while it is still pending |
 | GET | `/api/transactions` | any authenticated | Role-scoped list (same scoping as bookings) |
-| GET | `/api/income` | freelancer | Total income and transactions for the caller |
+| GET | `/api/income` | freelancer | Total income, pending income, booking status counts and transactions for the caller |
+| GET | `/api/income/tax?taxYear=` | freelancer | Estimated tax, monthly breakdown and assumptions (section 24A) |
 | GET | `/api/admin/users` | admin | List all users |
 | DELETE | `/api/admin/gigs/:id` | admin | Remove any gig |
 
@@ -720,18 +737,16 @@ The app runs at `http://localhost:5173`. The Vite dev server proxies `/api` to `
 
 ### 17.3 Docker Compose (local demonstration)
 
-From the repository root, copy `backend/.env.example` to `backend/.env`, replace `JWT_SECRET` with a long random value, then start the three services:
+From the repository root, create a `.env` file containing a long random `JWT_SECRET`, then start the three services:
 
 ```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env and set a strong JWT_SECRET
-cd backend
+echo "JWT_SECRET=$(openssl rand -hex 48)" > .env
 docker compose up --build
 ```
 
-Open `http://localhost`. Nginx serves the React build and forwards `/api/` requests to the HTTPS API container. MongoDB uses a named volume so its data survives container restarts. The API writes structured JSON logs to standard output; view them with `docker compose logs -f backend`.
+(`.env.docker.example` lists the optional variables, including `LOG_HTTP_HOST` and `LOG_HTTP_TOKEN` for shipping logs to a cloud platform.) Open `http://localhost`. Nginx serves the React build and forwards `/api/` requests to the API container over HTTPS; the API talks to MongoDB on the internal Compose network, and the database port is not published to the host. The API creates a self-signed development certificate on first start, so no certificate or secret is baked into an image or committed. MongoDB uses a named volume so its data survives restarts. Both images run as non-root users and the API and database have health checks. The API writes structured JSON logs to standard output; view them with `docker compose logs -f backend`.
 
-The Compose certificate is self-signed and intended only for local assessment/demo use. A public deployment must terminate TLS with a trusted certificate and use a production secret manager. Stop the services with `docker compose down`; add `-v` only if you also intend to delete the MongoDB data volume.
+The certificate is self-signed and intended only for local assessment and demo use. A public deployment must terminate TLS with a trusted certificate and use a production secret manager. Stop the services with `docker compose down`; add `-v` only if you also intend to delete the MongoDB data volume.
 
 ---
 
@@ -850,7 +865,7 @@ cd backend
 npm test
 ```
 
-41 tests in 5 suites cover registration/login/JWT, RBAC for every role, gig ownership, booking → transaction creation, income totals, role-scoped visibility, sanitisation, security headers, CORS, rate limiting and safe error responses. These tests run the real Express app but replace the Mongoose models with in-memory stand-ins (`tests/support/fakeModels.js`), so they validate application logic and security controls rather than MongoDB itself.
+124 tests in 12 suites cover registration/login/JWT, RBAC for every role, gig ownership, the booking approval workflow (pending → approved/rejected/cancelled/completed, with exactly one transaction on approval), the tax calculation, account lockout, token revocation, structured logging and redaction, income totals, role-scoped visibility, sanitisation, security headers, CORS, rate limiting and safe error responses. These tests run the real Express app but replace the Mongoose models with in-memory stand-ins (`tests/support/fakeModels.js`), so they validate application logic and security controls rather than MongoDB itself.
 
 ### API tests (Postman + Newman) against the real database
 
@@ -863,9 +878,9 @@ cd backend
 npm run test:newman
 ```
 
-`backend/postman/HustleHub-Part2.postman_collection.json` contains 41 requests and 64 assertions covering: registration of two freelancers and a client, rejection of the `admin` role at registration, duplicate email, wrong password, NoSQL operator injection, missing/valid tokens, RBAC (client cannot create gigs or view income or use admin routes; freelancer cannot book), gig create/update/delete and ownership (403 for another freelancer), script-tag sanitisation, invalid input and malformed ids, booking → transaction with server-side price (tampered amount ignored), role-scoped booking/transaction/income visibility, malformed-JSON handling, and the presence of CSP and HSTS headers. Unique emails are generated on each run so it can be repeated.
+`backend/postman/HustleHub-Part2.postman_collection.json` contains 54 requests and 86 assertions covering: registration of two freelancers and a client, rejection of the `admin` role at registration, duplicate email, wrong password, NoSQL operator injection, missing/valid tokens, RBAC (client cannot create gigs or view income or use admin routes; freelancer cannot book), gig create/update/delete and ownership (403 for another freelancer), script-tag sanitisation, invalid input and malformed ids, a booking that starts **pending** with the server-side price (tampered amount ignored) and no transaction, approval rules (a client cannot approve, another freelancer cannot approve, approving twice returns 409), the transaction created on approval, rejection creating no income, the tax summary and its validation, logout followed by a refused revoked token, role-scoped booking/transaction/income visibility, malformed-JSON handling, and the presence of CSP and HSTS headers. Unique emails are generated on each run so it can be repeated.
 
-Result of the run against MongoDB Atlas: **41 requests, 64 assertions, 0 failed** (output saved in `backend/docs/newman-part2-output.txt`). The Part 1 collection still passes against the Part 2 code. If the rate limit returns `429` after several back-to-back runs, restart the server or raise `RATE_LIMIT_AUTH_MAX`.
+**Latest result: 54 requests, 86 assertions, 0 failed.** The collection now runs automatically in the CI pipeline against the API with an in-memory database (section 24E, evidence in `backend/docs/evidence/newman-in-pipeline.png`). The earlier Part 2 run against MongoDB Atlas (41 requests, 64 assertions) is saved in `backend/docs/newman-part2-output.txt`. The Part 1 collection still passes. If the rate limit returns `429` after several back-to-back runs, restart the server or raise `RATE_LIMIT_AUTH_MAX`.
 
 The repository root also holds `HustleHub_Part2.postman_collection.json` and `postman-report.html`, an earlier collection and Newman HTML report produced by the frontend team member.
 
@@ -877,7 +892,7 @@ npm install
 npx vitest run
 ```
 
-The suite covers component rendering and form validation (Login, Register, Gigs, Booking), income dashboard loading/error/empty states, booking approval/rejection/cancellation interactions and status badges, plus integration tests that mock the API client: login stores the JWT and navigates, bad credentials show the server's generic message, a weak password never reaches the API, the register form offers only `client` and `freelancer`, clients see "Book Service" and freelancers do not, a booking sends only `gigId` and a note and explains that the request awaits freelancer approval, role-guarded routes redirect or refuse, and script-like gig text is rendered as inert text.
+The suite (33 tests) covers component rendering and form validation (Login, Register, Gigs, Booking), marketplace category filtering and price sorting, the freelancer's pending-request banner, the booking confirmation message, income dashboard loading/error/empty states, booking approval/rejection/cancellation interactions and status badges, plus integration tests that mock the API client: login stores the JWT and navigates, bad credentials show the server's generic message, a weak password never reaches the API, the register form offers only `client` and `freelancer`, clients see "Book Service" and freelancers do not, a booking sends only `gigId` and a note and explains that the request awaits freelancer approval, role-guarded routes redirect or refuse, and script-like gig text is rendered as inert text.
 
 ---
 
@@ -953,7 +968,7 @@ Gig management, bookings, simulated transactions, income tracking, RBAC, sanitis
 The frontend is built with **React, Vite, Tailwind CSS and React Router**.
 
 * **Authentication UI:** registration and login screens with client-side validation (mirroring the server's password policy) and graceful display of server errors.
-* **Marketplace browsing:** gig discovery with search over title, description and category.
+* **Marketplace browsing:** gig discovery with search, category filter chips, price sorting, a results count and a friendly empty state. Freelancers see a banner when booking requests are waiting for their decision.
 * **Booking interface:** the client submits a preferred date and notes. The request remains pending until the freelancer approves it; the client can cancel while it is pending. Approval creates the simulated transaction.
 * **Freelancer pages:** My gigs (create, pause/activate, delete), booking approval/rejection, and an income/tax dashboard with monthly income and booking-status summaries.
 * **Security alignment:** the JWT is attached to API calls and kept in `localStorage`. This is a recorded trade-off: script on the page could read it, which is mitigated by React's output escaping (no `dangerouslySetInnerHTML` is used), server-side sanitisation and the API's CSP. Route guards in the UI are a convenience only; the backend enforces authentication and RBAC on every request.
@@ -965,9 +980,14 @@ Watch our full-stack system walkthrough and feature demonstration video:
 👉 **[HustleHub+ Part 2 Demonstration Video](https://youtu.be/kJP1Gzv9_ao)**
 
 
-### Part 3 / operational follow-up
+### Part 3 (completed)
 
-The core Part 3 features are included in this submission: income/tax estimation, the financial dashboard, Docker and Docker Compose configuration, structured logging, additional security controls and the final security review. GitHub Actions CI checks are defined in `.github/workflows/ci.yml`. Automated image publishing and deployment are not configured in this repository and remain deployment-specific follow-up work.
+Income and tax estimation with a financial dashboard (24A), two additional security features (24B), structured logging with a cloud log platform (24C), the final security review (24D), a GitHub Actions CI pipeline with API tests and static analysis, and Docker Compose containerisation (24E, 17.3). Automated image publishing and deployment are not configured in this repository because no deployment target or credentials exist; this is recorded as future work.
+
+## 📺 Project Demonstration Video (Part 3)
+
+Full walkthrough of authentication, gig creation, booking, approval, income and tax, the transaction, logging, the CI pipeline and the Docker stack:
+👉 **[HustleHub+ Part 3 Demonstration Video](REPLACE-WITH-PART-3-VIDEO-LINK)**
 
 ---
 
@@ -1145,7 +1165,9 @@ Logs are how an attack is noticed and investigated; the event selection and reda
 
 ### Evidence
 
-- Screenshot of the log platform showing login, booking, transaction and error events: `docs/evidence/logging-platform.png` *(add after connecting the platform)*
+- Screenshot of the log platform (Better Stack) showing login, booking, transaction and error events:
+
+  ![Log platform showing structured events](backend/docs/evidence/logging-platform.png)
 - Local example of the real output: `docker compose logs backend`
 
 Example entry (formatted for reading):
@@ -1192,6 +1214,8 @@ Being honest about what is not covered is part of a security review.
 5. **Payments are simulated** (as the brief requires), so there is no real payment fraud surface and no payment-card data is handled.
 6. **The development certificate is self-signed.** A real deployment needs a certificate from a trusted authority.
 7. **The tax figure is an estimate** based on stated assumptions, not tax advice.
+8. **A development `.env` file was committed early in the project.** It was removed from version control and the secret it contained is no longer used; it held only a local database address and a development signing key, no credentials for any hosted service. Anyone using a real deployment must generate a new `JWT_SECRET`.
+9. **GitHub Actions are referenced by version tag** rather than commit ID (see the static analysis results in 24E).
 
 ### Verification
 
@@ -1205,14 +1229,40 @@ Being honest about what is not covered is part of a security review.
 
 ## 24E. Continuous Integration and Deployment Notes
 
-The GitHub Actions workflow at `.github/workflows/ci.yml` runs on pushes and pull requests targeting `main` or `master`. It uses Node.js 22 and performs the following checks:
+### Pipeline
 
-| Job | Checks |
+The GitHub Actions workflow `.github/workflows/ci.yml` runs automatically on every push and pull request to `main`. A failing step fails the run, which is the team's signal not to merge.
+
+| Job | What it does |
 |---|---|
-| Backend | `npm ci`, Jest/Supertest suite, production dependency audit |
-| Frontend | `npm ci`, ESLint, Vitest/React Testing Library, Vite production build, production dependency audit |
+| Backend | `npm ci`; the 124 Jest/Supertest tests; **Newman API endpoint tests** (the Postman collection, 54 requests and 86 assertions, run against the API started with an in-memory database); production dependency audit (`npm audit --omit=dev`) |
+| Client | `npm ci`; ESLint; the 33 Vitest/React Testing Library tests; Vite production build; production dependency audit |
+| Static analysis | Semgrep with JavaScript, Node.js, React, secrets and OWASP Top 10 rule sets; the full report is uploaded as the `semgrep-report` artifact |
+| Docker | Builds the API and client images (runs only after the backend and client jobs pass) |
 
-A failed check marks the workflow run as failed, giving the team feedback before merging. Docker Compose builds and runs the frontend, API and MongoDB containers for local demonstration. **The current workflow is CI, not automatic CD:** it does not publish images or deploy to a cloud host because no deployment provider or credentials are configured in this repository. A deployment job should be added only after the team selects and configures its target environment.
+Secrets are never stored in the workflow: the backend job uses a throwaway test-only `JWT_SECRET`, and real credentials exist only in a local `.env` that is not committed.
+
+### Static analysis results and what they indicate
+
+Semgrep scans every push. The first scan reported **11 findings, none in application code**. Two were real hardening items and were fixed: the client container ran as root, so it now uses an unprivileged nginx image (non-root user, port 8080); and the nginx proxy forwarded the client-supplied `Host` header, so it now sends a fixed value. Two findings came from an unfinished workflow file in the repository root, which was deleted. The re-run reports **7 findings, all the same one**: GitHub's own official actions (`checkout`, `setup-node`, `upload-artifact`) are referenced by version tag instead of a full commit ID. Pinning to commit IDs is a recognised supply-chain hardening step; because these are first-party GitHub actions the risk is low, and pinning is recorded as future work. The scan found no injection, cross-site scripting, hard-coded secret or authentication weakness in the backend or frontend code, which is consistent with the manual security review (24D) and the automated tests.
+
+### Containerisation
+
+Both applications have a Dockerfile inside their own folder (`backend/Dockerfile`, `client/Dockerfile`) and `docker-compose.yml` orchestrates the client, the API and MongoDB (see section 17.3). Both images run as non-root users, the database is not exposed to the host, and the API and database have health checks.
+
+### Evidence
+
+| Evidence | File |
+|---|---|
+| All pipeline jobs passing | ![Pipeline green](docs/evidence/ci-pipeline-green.png) |
+| Newman API tests inside the pipeline (86 assertions, 0 failed) | ![Newman in pipeline](backend/docs/evidence/newman-in-pipeline.png) |
+| Semgrep first scan (11 findings) | ![Semgrep before](backend/docs/evidence/semgrep-before.png) |
+| Semgrep after fixes (7 findings) | ![Semgrep after](backend/docs/evidence/semgrep-after.png) |
+| Containers running under Docker Compose | ![Docker running](backend/docs/evidence/docker-running.png) |
+| Application running in the containers | ![Application running](backend/docs/evidence/app-running.png) |
+| Log platform | ![Logging platform](backend/docs/evidence/logging-platform.png) |
+
+**The current workflow is CI, not automatic CD:** it does not publish images or deploy to a cloud host because no deployment provider or credentials are configured in this repository. A deployment job should be added only after the team selects and configures its target environment.
 
 ## 25. Academic Security Conclusion
 
@@ -1228,16 +1278,18 @@ The resulting implementation therefore satisfies the immediate Part 1 secure-fou
 
 **Part 2 conclusion.** Part 2 keeps the layered approach and applies it to the marketplace. Every sensitive route requires a JWT, role checks and ownership checks decide who can act on which record, user input is validated, sanitised and size-limited, authentication and booking endpoints are rate limited, and the API sends a strict Content-Security-Policy with HSTS. Pricing and ownership are decided on the server, so the client cannot forge them. Known limitations: a JWT carries the role at the time it was issued, so a role change takes effect only after the token expires (1 hour by default); rate-limit counters live in server memory, so scaling to several instances would need a shared store such as Redis; the JWT is held in `localStorage` in the browser; and payments are simulated, as the brief permits. The GitHub Actions workflow now provides continuous integration for backend tests, frontend lint/tests/build and production dependency audits; automatic deployment is not claimed.
 
+**Part 3 conclusion.** Part 3 adds the financial insight (income and an estimated tax figure explained in 24A), the controls an attacker has to get past (account lockout with backoff, token revocation on logout, a stricter CSP and Permissions-Policy, atomic booking approval so a payment can never be recorded twice) and the means to notice an attack (structured, redacted logs shipped to a cloud platform). The pipeline now tests the API end to end, scans dependencies and source on every push, and builds both containers, and the two Semgrep fixes show the scan found and closed real container weaknesses. Remaining risks are listed honestly in 24D: the token is stored in `localStorage`, there is no multi-factor authentication, rate-limit counters are per instance, and the tax figure is only an estimate.
+
 ---
 
-## 26. Part 2 Team Contributions
+## 26. Team Contributions (Parts 2 and 3)
 
 | Member | Contribution |
 | ------ | ------------ |
-| Lonwabo Gumede | Backend security and integration: MongoDB/Mongoose models, RBAC and ownership checks, validation, sanitisation, rate limiting, Helmet/CSP and CORS, the gig, booking, transaction and income modules used in the final build, admin routes and seed script, Jest suites, the Part 2 Postman collection and Newman run, the wiring of the React pages to the API, and this README update. |
-| Ayabonga Nzuza | React frontend foundation (project setup, Login, Register, Gigs and Booking pages, routing, Vitest component tests), an earlier Postman collection and Newman HTML report, and README contributions. |
-| Nonjabulo Mathenjwa | Frontend and documentation: income/tax dashboard, booking approval and cancellation interface, responsive UI refinements, Vitest coverage for dashboard and booking actions, architecture diagram updates, and README assembly incorporating the backend security, tax and logging documentation. |
-| Luke Lutchmiah | Part 1 Postman testing and documentation (`POSTMAN TESTING.docx`); an earlier gig controller/routes/test draft was uploaded but was not integrated because it lacked update and delete. <!-- confirm wording with Luke --> |
+| Lonwabo Gumede | Backend security and integration: MongoDB/Mongoose models, RBAC and ownership checks, validation, sanitisation, rate limiting, Helmet/CSP and CORS, the gig, booking, transaction and income modules used in the final build, admin routes and seed script, Jest suites, the Part 2 Postman collection and Newman run, the wiring of the React pages to the API. **Part 3:** booking approval workflow (state machine and atomic approval), tax engine and tax API, structured logging with the cloud log platform, account lockout and token revocation, CSP and Permissions-Policy hardening, 124 backend tests, the updated Newman collection, the GitHub Actions pipeline (including Newman and Semgrep), Docker fixes and Semgrep remediation, marketplace filtering/sorting and the pending-request banner. |
+| Ayabonga Nzuza | React frontend foundation (project setup, Login, Register, Gigs and Booking pages, routing, Vitest component tests), an earlier Postman collection and Newman HTML report, README contributions, and (Part 3) the first Dockerfiles and Docker Compose configuration for the backend and client. <!-- confirm wording with Ayabonga --> |
+| Nonjabulo Mathenjwa | Frontend and documentation: income/tax dashboard, booking approval and cancellation interface, responsive UI refinements, Vitest coverage for dashboard and booking actions, architecture diagram updates, README assembly incorporating the backend security, tax and logging documentation, and the Part 3 documentation updates. |
+| Luke Lutchmiah | Part 1 Postman testing and documentation (`POSTMAN TESTING.docx`); an earlier gig controller/routes/test draft was uploaded but was not integrated because it lacked update and delete. <!-- confirm wording with Luke; add any Part 3 work he did --> |
 
 ---
 
@@ -1251,7 +1303,7 @@ The resulting implementation therefore satisfies the immediate Part 1 secure-fou
 | ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
 | Part 2 – Frontend and documentation (Nonjabulo Mathenjwa) | ChatGPT (OpenAI) | Assistance with the income/tax dashboard, booking approval and cancellation interface, Vitest test drafts, architecture diagram and README assembly. The generated material must be reviewed, run and validated by the student before submission. | 9 November 2026 | This ChatGPT conversation (available in chat history) |
 | Part 1 – Documentation / Mermaid Diagram | ChatGPT (OpenAI) | Guidance on creating and structuring a Mermaid diagram for the HustleHub+ system documentation. ChatGPT was used to explain Mermaid diagram syntax, structure, and how to represent the required system components and relationships. The generated guidance was reviewed and adapted by me for the requirements of the assessment. | 7 September 2026 | https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 |
-| Part 1 and Part 2 – Backend code, tests, Postman/Newman collection, React integration, git and debugging guidance, README drafting | Claude (Anthropic) | Used as a coding and documentation assistant by Lonwabo Gumede: generating and reviewing backend code (Mongoose models, RBAC, sanitisation, rate limiting, error handling), Jest tests, the Part 2 Postman collection, wiring the React pages to the API, README sections, and step-by-step git and troubleshooting help. All code was run and tested by me (41 backend tests, Newman 64/64 against MongoDB Atlas, frontend tests) and reviewed before being committed. | Part 1 (September 2026) and 12 October 2026 | Available on request |
+| Part 1, Part 2 and Part 3 – Backend code, tests, Postman/Newman collection, React integration, tax engine, logging, security features, CI/CD pipeline, Docker configuration, static analysis triage, git and debugging guidance, README drafting | Claude (Anthropic) | Used as a coding and documentation assistant by Lonwabo Gumede: generating and reviewing backend code (Mongoose models, RBAC, sanitisation, rate limiting, error handling), Jest tests, the Part 2 Postman collection, wiring the React pages to the API, README sections, and, in Part 3, the booking approval workflow, tax calculation, structured logging, account lockout, token revocation, the GitHub Actions workflow, Docker Compose fixes, Semgrep findings and step-by-step git and troubleshooting help. All code was run and tested by me (124 backend tests, Newman 86/86 assertions in the pipeline, 33 frontend tests, a local Docker Compose run) and reviewed before being committed. | Part 1 (September 2026), 12 October 2026 and 8–9 November 2026 | Available on request |
 
 
 ### Statement of Responsible AI Use
@@ -1296,11 +1348,27 @@ ChatGPT was used for the Part 1 diagram guidance and for Nonjabulo Mathenjwa’s
 * [x] Security headers with a Content-Security-Policy
 * [x] MongoDB persistence with Mongoose
 * [x] React frontend: register, log in, browse gigs, book, view bookings and income
-* [x] Backend tests (Jest, 41) and API tests (Postman and Newman, 64 assertions)
+* [x] Backend tests (Jest) and API tests (Postman and Newman); current counts are in section 20A
 * [x] Frontend automated tests (Vitest and React Testing Library)
 * [x] README updated (features, security measures, run instructions, testing)
 * [ ] Screenshots committed to `backend/docs/screenshots`
 * [ ] Part 2 demonstration video recorded and linked: link to be added by the team
+* [ ] GitHub repository link included in the final submission
+
+---
+
+# Part 3 Submission Checklist
+
+* [x] Tax estimation with the calculation explained (24A)
+* [x] Frontend income and tax dashboard with summaries and a monthly chart
+* [x] CI/CD pipeline on GitHub Actions: install, backend tests, client tests, Newman API tests, builds, dependency audit; fails on any failure (24E)
+* [x] Static analysis (Semgrep) with results and an explanation (24E)
+* [x] Dockerfiles in `backend/` and `client/` with Docker Compose, tested running (17.3)
+* [x] Logging of logins, bookings, transactions and errors, with a cloud platform and an explanation (24C)
+* [x] Two additional security features: account lockout with backoff, token revocation on logout (24B)
+* [x] Final security review (24D)
+* [x] Final README with setup, features, security, testing, pipeline, logging and evidence
+* [ ] Part 3 demonstration video: replace `REPLACE-WITH-PART-3-VIDEO-LINK` near the top and in the video section
 * [ ] GitHub repository link included in the final submission
 
 ---
