@@ -4,7 +4,7 @@
 **Student:** Lonwabo Gumede, Ayabonga Nzuza, Luke James Lutchmiah, Nonjabulo Mathenjwa
 **Parts:** 1 — Secure Foundations; 2 — Secure Stack; 3 — DevSecOps, Monitoring and Finalisation
 
-**Part 3 demonstration video:** [HustleHub+ Part 3 walkthrough](REPLACE-WITH-PART-3-VIDEO-LINK)  
+**Part 3 demonstration video:** [HustleHub+ Part 3 walkthrough](https://youtu.be/gdJSjl8tBPc)  
 **Run everything with Docker:** see [section 17.3](#173-docker-compose-local-demonstration)  
 **CI pipeline, static analysis and evidence:** see [section 24E](#24e-continuous-integration-and-deployment-notes)
 
@@ -987,7 +987,7 @@ Income and tax estimation with a financial dashboard (24A), two additional secur
 ## 📺 Project Demonstration Video (Part 3)
 
 Full walkthrough of authentication, gig creation, booking, approval, income and tax, the transaction, logging, the CI pipeline and the Docker stack:
-👉 **[HustleHub+ Part 3 Demonstration Video](REPLACE-WITH-PART-3-VIDEO-LINK)**
+👉 **[HustleHub+ Part 3 Demonstration Video](https://youtu.be/gdJSjl8tBPc)**
 
 ---
 
@@ -1368,7 +1368,7 @@ ChatGPT was used for the Part 1 diagram guidance and for Nonjabulo Mathenjwa’s
 * [x] Two additional security features: account lockout with backoff, token revocation on logout (24B)
 * [x] Final security review (24D)
 * [x] Final README with setup, features, security, testing, pipeline, logging and evidence
-* [ ] Part 3 demonstration video: replace `REPLACE-WITH-PART-3-VIDEO-LINK` near the top and in the video section
+* [x] Part 3 demonstration video recorded and linked (top of this README and the video section)
 * [ ] GitHub repository link included in the final submission
 
 ---
