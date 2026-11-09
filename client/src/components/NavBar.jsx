@@ -12,7 +12,7 @@ export default function NavBar() {
       <span className="font-bold">HustleHub+</span>
       {user ? (
         <>
-          <Link className={linkClass} to="/gigs">Browse gigs</Link>
+          <Link className={linkClass} to="/gigs">Marketplace</Link>
           {user.role === 'freelancer' && <Link className={linkClass} to="/my-gigs">My gigs</Link>}
           <Link className={linkClass} to="/bookings">Bookings</Link>
           {user.role === 'freelancer' && <Link className={linkClass} to="/income">Income</Link>}

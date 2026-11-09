@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { errorMessage, isUnauthorised } from '../api';
+import NavBar from '../components/NavBar';
 
 export default function Booking() {
   const { id } = useParams();
@@ -10,6 +11,16 @@ export default function Booking() {
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [gig, setGig] = useState(null);
+
+  // Show what is being booked (title and price come from the server).
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve(api.get(`/gigs/${id}`))
+      .then((res) => { if (!cancelled && res?.data?.data?.gig) setGig(res.data.data.gig); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [id]);
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -28,18 +39,34 @@ export default function Booking() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50">
+      <NavBar />
+      <div className="p-6 flex items-center justify-center">
       <div className="max-w-lg w-full bg-white rounded-xl shadow-md p-8">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Book Service</h2>
-        <p className="text-sm text-gray-600 mb-6">Confirm details to schedule your service with the freelancer.</p>
+        <p className="text-sm text-gray-600 mb-4">Send a booking request. The freelancer must approve it before it is confirmed.</p>
+        {gig && (
+          <div className="mb-6 rounded-lg border bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 capitalize">{gig.category}</p>
+            <p className="mt-1 font-semibold text-gray-900">{gig.title}</p>
+            <p className="mt-1 text-sm text-gray-600">Price: <strong>R{gig.price}</strong> (simulated payment, charged only if approved)</p>
+          </div>
+        )}
 
         {submitted ? (
-          <div className="bg-green-50 border border-green-200 text-green-800 p-6 rounded-xl text-center space-y-3">
+          <div role="dialog" aria-label="Booking request sent" className="bg-green-50 border border-green-200 text-green-800 p-6 rounded-xl text-center space-y-3">
             <h3 className="font-bold text-lg">Booking Request Sent!</h3>
-            <p className="text-sm">Your booking for {date} has been confirmed (simulated payment).</p>
+            <p className="text-sm">Your request for {date} is now <strong>pending</strong>. The freelancer has to approve it before it is confirmed and the payment is recorded.</p>
+            <p className="text-sm">Track it under <strong>Bookings</strong>. You can cancel it while it is still pending.</p>
             {result?.transaction && (
               <p className="text-sm">Transaction <strong>{result.transaction.reference}</strong>: R{result.transaction.amount}</p>
             )}
+            <button
+              onClick={() => navigate('/bookings')}
+              className="mt-4 mr-2 bg-white border border-green-600 text-green-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-100 transition"
+            >
+              View my bookings
+            </button>
             <button
               onClick={() => navigate('/gigs')}
               className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
@@ -87,6 +114,7 @@ export default function Booking() {
             </div>
           </form>
         )}
+      </div>
       </div>
     </div>
   );

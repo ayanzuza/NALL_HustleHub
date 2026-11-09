@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import NavBar from '../components/NavBar';
 import BookingActions from '../components/BookingActions';
 import StatusBadge from '../components/StatusBadge';
+import PendingBanner from '../components/PendingBanner';
 
 const money = (value) =>
   new Intl.NumberFormat('en-ZA', {
@@ -109,6 +110,10 @@ export default function Bookings() {
             Manage booking requests and view transaction records.
           </p>
         </section>
+
+        {user?.role === 'freelancer' && (
+          <PendingBanner count={bookings.filter((b) => b.status === 'pending').length} />
+        )}
 
         {/* Error state */}
         {error && (
