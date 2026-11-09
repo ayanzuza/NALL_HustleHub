@@ -1,0 +1,46 @@
+# Run everything:  cp .env.docker.example .env   (set JWT_SECRET)   then   docker compose up --build
+# App: http://localhost  (the client proxies /api to the backend over HTTPS)
+services:
+  mongodb:
+    image: mongo:6
+    container_name: hustlehub-db
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    # No published port: only the backend can reach the database.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: hustlehub-backend
+    restart: unless-stopped
+    ports:
+      - "5443:5443"
+    environment:
+      PORT: 5443
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongodb:27017/hustlehub
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      FRONTEND_ORIGIN: http://localhost
+      LOG_LEVEL: info
+      LOG_HTTP_HOST: ${LOG_HTTP_HOST:-}
+      LOG_HTTP_TOKEN: ${LOG_HTTP_TOKEN:-}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  client:
+    build: ./client
+    container_name: hustlehub-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:

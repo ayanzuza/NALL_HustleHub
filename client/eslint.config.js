@@ -17,5 +17,15 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // JSX components (<Foo />) and React are used implicitly.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Context files export a hook and a provider; fine for this app.
+      'react-refresh/only-export-components': 'warn',
+    },
+  },
+  {
+    files: ['vite.config.js'],
+    languageOptions: { globals: globals.node },
   },
 ])
