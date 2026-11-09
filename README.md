@@ -4,6 +4,44 @@
 **Student:** Lonwabo Gumede, Ayabonga Nzuza, Luke James Lutchmiah, Nonjabulo Mathenjwa
 **Parts:** 1 — Secure Foundations; 2 — Secure Stack
 
+## Table of Contents
+
+1. [System Overview](#1-system-overview)
+2. [Intended Users](#2-intended-users)
+3. [Backend Architecture](#3-backend-architecture)
+4. [Project Structure](#4-project-structure)
+5. [API Routes](#5-api-routes)
+6. [Password Security and Hashing](#6-password-security-and-hashing)
+7. [JWT-Based Authentication](#7-jwt-based-authentication)
+8. [JWT Protection of Routes](#8-jwt-protection-of-routes)
+9. [Input Validation](#9-input-validation)
+10. [Request Size Protection](#10-request-size-protection)
+11. [HTTPS Configuration](#11-https-configuration)
+12. [Security Headers and CORS](#12-security-headers-and-cors)
+13. [Controlled Error Handling](#13-controlled-error-handling)
+14. [Authentication Error Protection](#14-authentication-error-protection)
+15. [Environment and Secret Management](#15-environment-and-secret-management)
+16. [Threat Notes](#16-threat-notes)
+17. [Setup and Running Locally](#17-setup-and-running-locally)
+18. [Windows / Git Bash Troubleshooting](#18-windows--git-bash-troubleshooting)
+19. [Postman Testing](#19-postman-testing)
+20. [Postman Test Results](#20-postman-test-results)
+20A. [Part 2 Automated Testing](#20a-part-2-testing-backend-newman-and-frontend)
+21. [API Response Format](#21-api-response-format)
+22. [Why 12 Bcrypt Salt Rounds?](#22-why-12-bcrypt-salt-rounds)
+23. [Dependency Advisories](#23-dependency-advisories)
+24. [Roadmap and Part 3 Status](#24-roadmap)
+24A. [Income and Tax Estimation](#24a-income-and-tax-estimation)
+24B. [Additional Security Features](#24b-additional-security-features)
+24C. [Logging and Monitoring](#24c-logging-and-monitoring)
+24D. [Final Security Review](#24d-final-security-review)
+24E. [Continuous Integration and Deployment Notes](#24e-continuous-integration-and-deployment-notes)
+25. [Academic Security Conclusion](#25-academic-security-conclusion)
+26. [Team Contributions](#26-part-2-team-contributions)
+27. [AI Disclosure](#ai-disclosure)
+28. [Submission Checklists](#part-1-submission-checklist)
+29. [References](#references)
+
 ---
 
 ## 1. System Overview
@@ -19,7 +57,7 @@ Because HustleHub+ processes sensitive information such as passwords, authentica
 
 Part 1 delivered the secure backend foundation: Node.js and Express REST endpoints for registration, authentication, and access to authenticated user information, backed by an in-memory user store as permitted by the POE brief.
 
-**Part 2 (Secure Stack)** turns that foundation into a full-stack marketplace. User data is now persisted in **MongoDB through Mongoose**; freelancers create and manage their own gigs; clients browse and book them; every booking produces a simulated transaction record; each freelancer's income is tracked from their own transactions; and a React frontend consumes the API. Role-based access control, input sanitisation, rate limiting and a Content Security Policy were added across the backend. See sections 5, 12, 16, 17, 19 and 26.
+**Part 2 (Secure Stack)** turns that foundation into a full-stack marketplace. User data is now persisted in **MongoDB through Mongoose**; freelancers create and manage their own gigs; clients browse and request bookings; a simulated transaction is recorded only when a freelancer approves a request; each freelancer's income is tracked from their own transactions; and a React frontend consumes the API. Role-based access control, input sanitisation, rate limiting and a Content Security Policy were added across the backend. See sections 5, 12, 16, 17, 19 and 26.
 
 The backend includes:
 
@@ -34,7 +72,7 @@ The backend includes:
 * Protected routes using reusable authentication middleware
 * Postman tests covering successful and invalid scenarios
 
-Tax estimation, CI/CD, containerisation, structured logging and the final security review are planned for Part 3.
+Part 2 now includes income and tax estimation, Docker containerisation, structured logging, additional security controls and a final security review. A GitHub Actions continuous-integration workflow runs backend and frontend quality checks; deployment remains a separate operational step.
 
 ---
 
@@ -49,7 +87,7 @@ Clients use the platform to:
 * Browse available freelance services
 * View freelancer offerings
 * Book services
-* View their bookings and the transaction record created for each booking (Part 2)
+* View their bookings and transaction records; cancel a request while it is still pending
 
 The `client` role is available through the public registration endpoint.
 
@@ -59,10 +97,11 @@ Freelancers use the platform to:
 
 * Advertise services as gigs
 * Manage bookings
-* Track income from their bookings (Part 2)
-* View estimated tax obligations (planned for Part 3)
+* Review booking requests and approve or reject pending work
+* Track gross income, estimated tax, net income and monthly income trends
+* Review booking counts by status
 
-The `freelancer` role is available through the public registration endpoint.
+The `freelancer` role is available through the public registration endpoint. Freelancers can review incoming booking requests and approve or reject pending requests.
 
 ### 2.3 Admin
 
@@ -81,15 +120,34 @@ This prevents an unauthenticated user from simply assigning themselves an elevat
 
 HustleHub+ follows the **MERN** architecture: MongoDB, Express, React, and Node.js.
 
-In Part 1 the data-access layer was an in-memory store that followed a Mongoose-shaped interface. In Part 2 it was replaced by **MongoDB/Mongoose models** (`src/models`), and a **React frontend** (`client/`) was added. The architecture diagram below is the Part 1 diagram; the Part 2 request path is given in section 3.2.
+In Part 1 the data-access layer was an in-memory store that followed a Mongoose-shaped interface. In Part 2 it was replaced by **MongoDB/Mongoose models** (`src/models`), and a **React frontend** (`client/`) was added. The architecture below shows the complete Part 2 application, its Docker runtime, GitHub Actions quality pipeline and structured logging destinations.
 
 ### 3.1 System Architecture Diagram
 
-<img width="1368" height="1819" alt="MERMIAD DIAGRAM drawio" src="https://github.com/user-attachments/assets/70e8a18b-7859-488a-9f2a-e6afb90d7959" />
+```mermaid
+flowchart TB
+  U[Client / Freelancer / Admin] -->|HTTPS| WEB["React + Vite frontend<br/>Nginx container"]
+  WEB -->|/api requests + JWT| API["Express REST API<br/>Node.js container"]
+  API --> SEC["Security middleware<br/>Helmet • CORS • validation • sanitisation<br/>JWT / RBAC • rate limits"]
+  SEC --> CTRL["Controllers and business rules<br/>Gigs • bookings • transactions • income/tax"]
+  CTRL <--> DB[("MongoDB container<br/>Mongoose models")]
+  API --> LOG[Winston structured JSON logger]
+  LOG --> STDOUT["Container stdout<br/>Docker logs"]
+  LOG -. optional HTTPS shipping .-> CLOUD["External log platform<br/>when host/token configured"]
+  GH[GitHub repository] --> CI["GitHub Actions CI<br/>Node 22 • npm ci • tests • lint<br/>production audit • frontend build"]
+  CI -->|pass/fail status| GH
+  GH -. source used to build .-> IMG["Docker images<br/>API + frontend"]
+  IMG -. deploy separately .-> RUN["Docker Compose / deployment host"]
+  RUN --> WEB
+  RUN --> API
+  RUN --> DB
+```
+
+**Deployment note:** Docker Compose defines the local multi-container runtime. The GitHub Actions workflow in `.github/workflows/ci.yml` performs continuous integration (tests, linting, build and production dependency audits). It does not automatically publish images or deploy to a hosting provider; deployment is a separate step and must be configured for the chosen host.
 
 ### 3.2 Request Processing Flow
 
-A controlled processing sequence is followed when a request is submitted to the HustleHub+ backend.
+A controlled processing sequence is followed when a request is submitted to the HustleHub+ backend, using Express routing and middleware (Express.js, n.d.-a, n.d.-b, n.d.-c).
 
 For general requests:
 
@@ -256,8 +314,8 @@ Public authentication routes are kept separate from protected routes. Authentica
 | Area | Behaviour |
 | ---- | --------- |
 | Gig management | Freelancers create, view, update and delete **their own** gigs. Any logged-in user can browse active gigs with a category filter and pagination. |
-| Bookings | Clients book an active gig. The booking snapshots the gig title and price and links the client and the freelancer. |
-| Transactions | Every booking creates a transaction (`TXN-…` reference, amount, currency ZAR, status `simulated-paid`). No payment provider is called, as permitted by the brief. |
+| Bookings | Clients request an active gig. The booking snapshots the gig title and price and remains pending until the freelancer approves or rejects it; clients may cancel while it is pending. |
+| Transactions | A transaction (`TXN-…` reference, amount, currency ZAR, status `simulated-paid`) is created when the freelancer approves a pending booking. No payment provider is called, as permitted by the brief. |
 | Income tracking | `GET /api/income` returns the freelancer's total income, transaction count and transactions, derived from transactions where they are the freelancer. |
 | Admin | Admins can list users and remove any gig. Admin accounts are created by a seed script, never through the public API. |
 
@@ -311,7 +369,7 @@ Match / no match
 
 Only when the comparison succeeds does the application issue a JWT.
 
-This approach follows the security principle that passwords should be protected using dedicated password-hashing algorithms rather than reversible encryption.
+This approach follows the security principle that passwords should be protected using dedicated password-hashing algorithms rather than reversible encryption (OWASP, n.d.-e).
 
 ---
 
@@ -328,7 +386,7 @@ Sensitive information such as the user's password is never placed inside the JWT
 
 The token is signed using the `JWT_SECRET` environment variable. The secret is not hard-coded in the source code.
 
-The token expiration is configurable using `JWT_EXPIRES_IN`, with a default of **1 hour**.
+The token expiration is configurable using `JWT_EXPIRES_IN`, with a default of **1 hour**. The token format follows the JSON Web Token specification (Jones, Bradley and Sakimura, 2015).
 
 ### JWT Authentication Flow
 
@@ -363,7 +421,7 @@ with subsequent requests
       proceeds
 ```
 
-The authentication middleware verifies the JWT signature and expiration on every protected request.
+The authentication middleware verifies the JWT signature and expiration on every protected request (Jones, Bradley and Sakimura, 2015).
 
 Requests with no token or a malformed `Authorization` header return:
 
@@ -448,7 +506,7 @@ The login endpoint validates:
 * Email is normalised
 * Password is provided
 
-Validation takes place before the controller is executed.
+Validation takes place before the controller is executed, using express-validator and allow-list validation principles (Express-Validator, n.d.; OWASP, n.d.-c).
 
 Invalid requests receive:
 
@@ -464,14 +522,14 @@ This provides a security barrier between untrusted external input and authentica
 
 ## 10. Request Size Protection
 
-The backend limits JSON and URL-encoded request bodies to **10 KB**:
+The backend limits JSON and URL-encoded request bodies to **10 KB**, consistent with the principle of limiting accepted request data (OWASP, n.d.-f):
 
 ```javascript
 express.json({ limit: '10kb' })
 express.urlencoded({ limit: '10kb' })
 ```
 
-This prevents the authentication API from unnecessarily processing oversized request bodies and reduces exposure to resource-exhaustion attacks involving excessively large payloads.
+This prevents the authentication API from unnecessarily processing oversized request bodies and reduces exposure to resource-exhaustion attacks involving excessively large payloads (OWASP, n.d.-f).
 
 ---
 
@@ -479,7 +537,7 @@ This prevents the authentication API from unnecessarily processing oversized req
 
 The HustleHub+ backend is served over HTTPS rather than plain HTTP.
 
-The `server.js` implementation uses Node.js's native HTTPS functionality and loads a locally generated development certificate and private key:
+The `server.js` implementation uses Node.js's native HTTPS functionality and loads a locally generated development certificate and private key (Node.js, n.d.):
 
 ```text
 HTTPS client
@@ -503,7 +561,7 @@ For production deployment, the self-signed certificate would be replaced with a 
 
 ### 12.1 Helmet and Content-Security-Policy
 
-`helmet()` applies HTTP security headers. In Part 2 it is configured with an explicit Content-Security-Policy. Because the API only returns JSON and never serves HTML, the policy is deliberately strict:
+`helmet()` applies HTTP security headers. In Part 2 it is configured with an explicit Content-Security-Policy, following the defensive guidance in the OWASP cheat sheet (OWASP, n.d.-b). Because the API only returns JSON and never serves HTML, the policy is deliberately strict:
 
 ```text
 default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
@@ -619,7 +677,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 ### 17.1 Backend
 
-Requirements: Node.js 18+, and a MongoDB database (local, or a free MongoDB Atlas cluster with your IP on the Network Access list).
+Requirements: Node.js 22.22+ (recommended), Docker with the Compose plugin for the container option, and a MongoDB database (local, or a free MongoDB Atlas cluster with your IP on the Network Access list).
 
 ```bash
 cd backend
@@ -657,7 +715,23 @@ npm install
 npm run dev
 ```
 
-The app runs at `http://localhost:5173`. The Vite dev server proxies `/api` to `https://localhost:5443` (accepting the self-signed certificate in development only). Start the backend first. The frontend can register users, log in, browse gigs, create gigs (freelancers), book gigs (clients), and view bookings, transactions and income.
+The app runs at `http://localhost:5173`. The Vite dev server proxies `/api` to `https://localhost:5443` (accepting the self-signed certificate in development only). Start the backend first. The frontend can register users, log in, browse gigs, create gigs (freelancers), book gigs (clients), and view bookings, transactions and income. Freelancers can approve or reject booking requests, while clients can cancel requests that remain pending.
+
+
+### 17.3 Docker Compose (local demonstration)
+
+From the repository root, copy `backend/.env.example` to `backend/.env`, replace `JWT_SECRET` with a long random value, then start the three services:
+
+```bash
+cp backend/.env.example backend/.env
+# Edit backend/.env and set a strong JWT_SECRET
+cd backend
+docker compose up --build
+```
+
+Open `http://localhost`. Nginx serves the React build and forwards `/api/` requests to the HTTPS API container. MongoDB uses a named volume so its data survives container restarts. The API writes structured JSON logs to standard output; view them with `docker compose logs -f backend`.
+
+The Compose certificate is self-signed and intended only for local assessment/demo use. A public deployment must terminate TLS with a trusted certificate and use a production secret manager. Stop the services with `docker compose down`; add `-v` only if you also intend to delete the MongoDB data volume.
 
 ---
 
@@ -803,7 +877,7 @@ npm install
 npx vitest run
 ```
 
-The suite covers component rendering and form validation (Login, Register, Gigs, Booking) and integration tests that mock the API client: login stores the JWT and navigates, bad credentials show the server's generic message, a weak password never reaches the API, the register form offers only `client` and `freelancer`, clients see "Book Service" and freelancers do not, a booking sends only `gigId` and a note and shows the transaction reference, role-guarded routes redirect or refuse, and script-like gig text is rendered as inert text.
+The suite covers component rendering and form validation (Login, Register, Gigs, Booking), income dashboard loading/error/empty states, booking approval/rejection/cancellation interactions and status badges, plus integration tests that mock the API client: login stores the JWT and navigates, bad credentials show the server's generic message, a weak password never reaches the API, the register form offers only `client` and `freelancer`, clients see "Book Service" and freelancers do not, a booking sends only `gigId` and a note and explains that the request awaits freelancer approval, role-guarded routes redirect or refuse, and script-like gig text is rendered as inert text.
 
 ---
 
@@ -880,8 +954,8 @@ The frontend is built with **React, Vite, Tailwind CSS and React Router**.
 
 * **Authentication UI:** registration and login screens with client-side validation (mirroring the server's password policy) and graceful display of server errors.
 * **Marketplace browsing:** gig discovery with search over title, description and category.
-* **Booking interface:** the client picks a date and notes; the booking is created through the API and the transaction reference is shown as the simulated confirmation.
-* **Freelancer pages:** My gigs (create, pause/activate, delete), bookings and transactions, and income.
+* **Booking interface:** the client submits a preferred date and notes. The request remains pending until the freelancer approves it; the client can cancel while it is pending. Approval creates the simulated transaction.
+* **Freelancer pages:** My gigs (create, pause/activate, delete), booking approval/rejection, and an income/tax dashboard with monthly income and booking-status summaries.
 * **Security alignment:** the JWT is attached to API calls and kept in `localStorage`. This is a recorded trade-off: script on the page could read it, which is mitigated by React's output escaping (no `dangerouslySetInnerHTML` is used), server-side sanitisation and the API's CSP. Route guards in the UI are a convenience only; the backend enforces authentication and RBAC on every request.
 
 
@@ -891,21 +965,254 @@ Watch our full-stack system walkthrough and feature demonstration video:
 👉 **[HustleHub+ Part 2 Demonstration Video](https://youtu.be/kJP1Gzv9_ao)**
 
 
-### Part 3
+### Part 3 / operational follow-up
 
-Planned functionality includes:
-
-* Tax estimation
-* Financial dashboard
-* CI/CD using GitHub Actions
-* Static analysis
-* Docker
-* Docker Compose
-* Structured logging
-* Additional security controls
-* Final security review
+The core Part 3 features are included in this submission: income/tax estimation, the financial dashboard, Docker and Docker Compose configuration, structured logging, additional security controls and the final security review. GitHub Actions CI checks are defined in `.github/workflows/ci.yml`. Automated image publishing and deployment are not configured in this repository and remain deployment-specific follow-up work.
 
 ---
+
+## 24A. Income and Tax Estimation
+
+
+
+### What it does
+
+Freelancers see how much they have earned and a rough estimate of the income tax on it. The estimate uses the South African individual income tax tables published by the South African Revenue Service (SARS, 2026) and is for guidance only; it is not tax advice and not a SARS assessment.
+
+Endpoints (freelancer only): `GET /api/income` (totals, bookings waiting for approval) and `GET /api/income/tax?taxYear=2027` (gross income, estimated tax, net income, month-by-month figures).
+
+### Where the income comes from
+
+Income is the sum of the freelancer's **transaction records**. A transaction is only created when the freelancer **approves** a booking, so rejected and cancelled bookings never count as income, and a booking still waiting for approval is shown separately as "pending income". The freelancer is always taken from the verified JWT, never from the request, so nobody can read another freelancer's income.
+
+### The calculation
+
+South Africa taxes income in bands (brackets): the more you earn, the higher the rate on the part of income that falls in each band. Every band has a base amount (the tax on all income below the band) so only one multiplication is needed:
+
+```
+normal tax    = base of the band + rate x (income - start of the band)
+estimated tax = normal tax - primary rebate          (never below zero)
+net income    = gross income - estimated tax
+```
+
+Tax year 2027 (1 March 2026 to 28 February 2027):
+
+| Taxable income (R) | Rate | Base amount (R) |
+|---|---|---|
+| 0 - 245 100 | 18% | 0 |
+| 245 101 - 383 100 | 26% | 44 118 |
+| 383 101 - 530 200 | 31% | 79 998 |
+| 530 201 - 695 800 | 36% | 125 599 |
+| 695 801 - 887 000 | 39% | 185 215 |
+| 887 001 - 1 878 600 | 41% | 259 783 |
+| 1 878 601 and above | 45% | 666 339 |
+
+The primary rebate is R17 820, so a person under 65 pays no tax on the first R99 000 (R17 820 / 18%). The 2026 table (R17 235 rebate, R95 750 threshold) is also supported, so earlier income can be viewed.
+
+**Worked example.** Gross income of R300 000 in tax year 2027 falls in the 26% band:
+44 118 + 26% x (300 000 - 245 100) = 44 118 + 14 274 = R58 392. Less the R17 820 rebate gives **R40 572** estimated tax, R259 428 net income, and an effective rate of 13.52% (40 572 / 300 000).
+
+**Monthly view.** The year's effective rate is applied to each month's income so the dashboard can chart it. The last month with income absorbs any rounding difference, so the twelve months always add up exactly to the annual figures.
+
+### Tax years and dates
+
+A tax year is named after the year it ends in and runs from 1 March to the end of February. Each transaction is placed in a tax year by the date it was recorded, in South African time (UTC+2), so a payment recorded just after midnight on 1 March belongs to the new tax year.
+
+### Design decisions
+
+- **Whole cents.** All maths is done in integer cents, so values like 0.1 + 0.2 never produce rounding drift in financial figures.
+- **Tables in configuration.** Brackets and rebates live in `src/config/taxTables.js`, separate from the calculation code (`src/utils/taxEngine.js`). A new tax year is a data change, not a code change.
+- **Pure functions.** The engine has no database access, so it is easy to test in isolation.
+- **Unsupported years are an error**, never a silent guess; the API returns 400 for a tax year it has no table for.
+
+### Assumptions and limitations (shown to the user on the dashboard)
+
+The estimate assumes the freelancer is under 65, that this is their only income, and that no deductions apply. It does not include medical tax credits, retirement contributions, business expenses, provisional-tax payments or the age-based rebates. Real tax would normally be lower once expenses are deducted.
+
+### Testing
+
+`tests/tax.test.js` checks the worked examples above, that the tax at the top of each band equals the base of the next band (this catches typing mistakes in the tables), that tax never falls as income rises, the 1 March boundary in South African time, that monthly figures add up to the annual total, and that the endpoint is freelancer-only and rejects invalid tax years.
+
+
+## 24B. Additional Security Features
+
+Two features were added beyond the minimum requirements, together with further hardening controls. The authentication and session protections are informed by OWASP guidance (OWASP, n.d.-a).
+
+Two features were added beyond what the brief requires, plus a set of smaller hardening changes. All are working, tested and active in the final system.
+
+### Feature 1 - Account lockout with exponential backoff
+
+**Problem.** Rate limiting is per IP address. An attacker using many addresses can still guess one account's password slowly. Lockout protects the *account* itself.
+
+**How it works.**
+- Every failed login for an existing account increments a counter, using an atomic database update so parallel guesses cannot slip past it.
+- After **5** consecutive failures the account is locked for **15 minutes**. Each further lock doubles the time (30 min, 60 min and so on) up to a cap of **24 hours**, so a persistent attacker is slowed to a crawl while a genuine user who forgot their password recovers quickly.
+- A successful login clears the counter and the backoff.
+- While locked, even the correct password is refused, and failed attempts during the lock do not extend it (so an attacker cannot keep a victim locked out forever by hammering the account).
+- The thresholds are configurable (`LOCKOUT_THRESHOLD`, `LOCKOUT_BASE_MS`, `LOCKOUT_MAX_MS`).
+
+**Not revealing account state.** Unknown email, wrong password and locked account all return the same `401 Invalid email or password`. The server also performs a real bcrypt comparison against a dummy hash when the account does not exist or is locked, so response *time* does not reveal which case occurred either. Lock state is never included in any API response. The lock is recorded in the log (`auth.account_locked`) so it is visible to monitoring.
+
+**Trade-off.** Lockout can be abused to annoy a specific user (deliberately failing logins against their account). The lock is short, grows only for repeat offenders, expires by itself and is combined with IP rate limiting, which we judged an acceptable trade for protection against account takeover.
+
+**Code:** `src/controllers/authController.js`, user lock fields in `src/models/User.js`. **Tests:** `tests/lockout.test.js`.
+
+### Feature 2 - Token revocation on logout (JWT denylist)
+
+**Problem.** A JWT is valid until it expires. Without revocation, "logging out" only deletes the token in the browser; a copied or stolen token keeps working for up to an hour.
+
+**How it works.**
+- Every token now carries a unique id (`jti`).
+- `POST /api/auth/logout` stores that `jti`, with the token's expiry time, in a `RevokedToken` collection. Only the id is stored, never the token itself.
+- The authentication middleware checks the denylist on every protected request, so the token stops working immediately on every route.
+- MongoDB removes each entry automatically once the token would have expired anyway (a TTL index), so the collection stays small.
+- Tokens with no `jti` are rejected, because they could never be revoked. If the denylist cannot be checked (for example the database is down) the request is refused rather than allowed (fail closed).
+- Logging out ends only that session; the same user's other sessions are unaffected.
+
+**Code:** `src/models/RevokedToken.js`, `src/middleware/authenticate.js`, `logout` in the auth controller. **Tests:** `tests/logout.test.js`.
+
+### Further hardening
+
+| Change | Why |
+|---|---|
+| **JWT algorithm pinned to HS256** at verification | Blocks "algorithm confusion" attacks where a forged token names a different or no algorithm |
+| **Expanded Content-Security-Policy** (16 directives, all `'none'` plus `upgrade-insecure-requests`) | The API only returns JSON, so scripts, styles, images, fonts, frames, forms, plugins and network access are all denied; if a response were ever rendered by a browser it could load and run nothing |
+| **Permissions-Policy** disabling camera, microphone, geolocation, payment and USB | Removes powerful browser features the app never needs |
+| **`Cache-Control: no-store`** on API responses | Keeps financial and personal data out of browser and proxy caches |
+| **Server-generated request ids** | Lets every log entry for one request be correlated, and cannot be forged by clients |
+| **Atomic booking state changes** | Two simultaneous approvals cannot both succeed, so a booking can never produce two transactions |
+| **Dependency advisories fixed** | `npm audit` reports 0 vulnerabilities in production dependencies |
+
+### Content-Security-Policy directives explained
+
+| Directive | Value | What it prevents |
+|---|---|---|
+| `default-src` | `'none'` | Fallback: anything not listed is blocked |
+| `script-src`, `script-src-attr` | `'none'` | Any JavaScript, including inline event handlers (core XSS defence) |
+| `style-src`, `img-src`, `font-src`, `media-src` | `'none'` | Loading styles, images, fonts or media (stops injected content and data leaks through resource requests) |
+| `connect-src` | `'none'` | `fetch`, XHR and WebSocket calls (stops exfiltration of data to an attacker's server) |
+| `object-src`, `frame-src`, `child-src`, `worker-src`, `manifest-src` | `'none'` | Plugins, embedded pages, workers and manifests |
+| `base-uri` | `'none'` | A `<base>` tag redirecting relative links |
+| `form-action` | `'none'` | Forms submitting data elsewhere |
+| `frame-ancestors` | `'none'` | The API being embedded in another site (clickjacking) |
+| `upgrade-insecure-requests` | - | Plain `http://` sub-requests are upgraded to `https://` |
+
+The React frontend serves real pages, so it has its own, less restrictive policy configured on its web server (see `docs/frontend-csp-recommendation.md`).
+
+
+## 24C. Logging and Monitoring
+
+
+
+### How it works
+
+The API writes one structured JSON entry per event using Winston (`src/utils/logger.js`). JSON means each field (event name, user, request id, IP) can be searched and filtered by a log platform instead of reading free text. Entries go to two places:
+
+1. **Standard output.** Docker captures this, so `docker compose logs backend` shows the live log.
+2. **A cloud log platform (optional, enabled by environment variables).** When `LOG_HTTP_HOST` and `LOG_HTTP_TOKEN` are set, entries are also sent over HTTPS to the platform in small batches. If the platform is unreachable the API keeps running; log shipping can never take the application down.
+
+Every request gets a server-generated request id (also returned in the `X-Request-Id` header). All log entries for one request share it, so an incident can be followed from the first request to the final error. A request id supplied by a client is ignored, so it cannot be used to forge log entries.
+
+### What is logged and why
+
+| Event | Level | Why it matters |
+|---|---|---|
+| `auth.register`, `auth.register_duplicate` | info / warn | New accounts; repeated duplicates can mean someone probing for existing emails |
+| `auth.login_success` | info | Normal activity baseline and an audit trail of who signed in |
+| `auth.login_failed` (reason: `unknown_user` / `bad_password`) | warn | Many failures from one IP or against one account is the signature of password guessing |
+| `auth.login_blocked` | warn | A locked account is still being attacked |
+| `auth.account_locked` | warn | Lockout triggered, with its duration |
+| `auth.logout`, `auth.token_rejected` (reason: `expired` / `invalid` / `revoked` / `missing_jti`) | info / warn | Forged, tampered or reused tokens, including use of a logged-out token |
+| `authz.denied` | warn | A user tried something their role or ownership does not allow (probing for broken access control) |
+| `booking.created`, `booking.approved`, `booking.rejected`, `booking.cancelled`, `booking.completed` | info | Full audit trail of the booking workflow, including who and from which status |
+| `transaction.created` | info | Every simulated payment with reference, parties and amount, so money records can be reconciled |
+| `income.tax_summary_viewed` | info | Access to financial data |
+| `ratelimit.exceeded` | warn | Abuse, scraping or automated attacks, with which limiter fired |
+| `error.handled` | warn (4xx) / error (5xx) | Failures with the real cause, which the client is never shown |
+| `http.request` | info | Method, path, status and response time for every request |
+
+### What is deliberately NOT logged
+
+- **Passwords, tokens, authorization headers, cookies and hashes.** Any field whose name suggests a secret is replaced with `[REDACTED]` before an entry is written, at any depth. This is a safety net on top of never passing such values in the first place.
+- **Email addresses.** A short SHA-256 fingerprint is logged instead, so repeated attempts against one account can still be correlated without storing personal data in the logs.
+- **Query strings** (nothing sensitive that ended up in a URL is stored) and **request bodies**.
+
+Stack traces are logged only outside production, and only for server errors. Clients only ever receive a generic error message.
+
+### Why this is important for security
+
+Logs are how an attack is noticed and investigated; the event selection and redaction approach follows OWASP logging guidance (OWASP, n.d.-d). Failed logins, lockouts, rejected tokens and access-control denials show an attack as it happens; the booking and transaction trail lets us verify what was done and by whom after the fact. Logs also need protecting: they exclude secrets so that a leaked log file does not become a leaked credential.
+
+### Evidence
+
+- Screenshot of the log platform showing login, booking, transaction and error events: `docs/evidence/logging-platform.png` *(add after connecting the platform)*
+- Local example of the real output: `docker compose logs backend`
+
+Example entry (formatted for reading):
+
+```json
+{ "level": "warn", "event": "auth.login_failed", "reason": "bad_password", "emailId": "fb98d44ad750",
+  "requestId": "0f6e...", "ip": "::1", "service": "hustlehub-api", "timestamp": "2026-11-08T19:31:38.287Z" }
+```
+
+### Testing
+
+`tests/logging.test.js` checks redaction at any depth, that entries reach a real transport as valid JSON, that failed logins never contain the password or raw email, and that registration, login, lockout, booking, approval, transaction, access-denied, rejected-token and unexpected-error events are all recorded. `tests/logging.ratelimit.test.js` checks rate-limit hits are logged.
+
+
+## 24D. Final Security Review
+
+
+This review maps the threats most relevant to HustleHub+ to the controls that address them, using the OWASP Top 10 (2021) as the checklist (OWASP, 2021). Each control is implemented in code and covered by automated tests unless stated otherwise.
+
+### Threat-to-control mapping
+
+| Threat | How it could happen here | Controls in place | Where |
+|---|---|---|---|
+| **Injection** (NoSQL operator injection) | A login or filter value such as `{"$gt": ""}` changes the meaning of a database query and bypasses a check | Every field is validated as a string/number/allowed value (objects are refused outright); `express-mongo-sanitize` strips `$` and `.` keys; Mongoose schemas fix field types; query-string filters (`status`, `taxYear`, `category`) are validated against allow-lists | `validators.js`, `sanitize.js`, tests in `security.test.js`, `approval.test.js`, `tax.test.js` |
+| **Cross-site scripting (XSS)** | A gig title or booking note containing `<script>` is stored and later runs in another user's browser | HTML and script are stripped from free text before storage; React escapes output by default; API CSP blocks all scripts and connections; the frontend gets its own restrictive CSP | `sanitize.js`, `app.js`, `frontend-csp-recommendation.md` |
+| **Authentication weaknesses** | Weak or leaked passwords, password guessing, forged or stolen tokens, user enumeration | Passwords hashed with bcrypt (12 rounds) and a strength policy; JWTs signed, algorithm pinned, expire after 1 hour; **lockout with backoff**; **token revocation on logout**; IP rate limiting on auth routes; identical response and similar timing for unknown user, wrong password and locked account; HTTPS only | `authController.js`, `authenticate.js`, `rateLimiter.js` |
+| **Broken access control** | A user reads or changes another user's gigs, bookings, transactions or income; a client approves their own booking; role escalation at registration | JWT required on every protected route; role check (`authorize`) on each action; **ownership check** (only the gig's freelancer can approve/reject/complete, only the booking's client can cancel); queries scoped to the caller's own records; admins are read-only on bookings; registration cannot create admins; only whitelisted fields are copied from request bodies | `authorize.js`, `bookingController.js`, tests `approval.test.js`, `bookings.test.js` |
+| **Business-logic abuse** | Choosing the price, approving twice to create duplicate payments, income counting rejected bookings | Price always read from the stored gig; booking state machine (invalid moves return 409); atomic state change so concurrent approvals produce exactly one transaction; approval rolled back if the transaction cannot be saved; income counted only from approved bookings | `bookingController.js`, `incomeController.js` |
+| **Sensitive data exposure** | Hashes, lock state or tokens leaking through responses, logs or caches | Password hash and lockout fields excluded from every query and every JSON response; logs redact secrets and store email fingerprints only; `Cache-Control: no-store`; HSTS and TLS in transit; errors return generic messages with no stack traces, paths or configuration | `cleanJson.js`, `logger.js`, `errorHandler.js` |
+| **Security misconfiguration** | Missing headers, open CORS, verbose errors, default settings | Helmet with a full CSP, HSTS, no-referrer, nosniff; Permissions-Policy; CORS limited to the configured frontend origin and needed methods; required secrets must be set or the server refuses to start; `X-Powered-By` removed | `app.js`, `env.js` |
+| **Denial of service / abuse** | Flooding login or booking endpoints; huge request bodies | Rate limits on authentication, booking creation, booking actions and all other routes (clear 429 message); 10 KB body limit; lockout slows single-account attacks | `rateLimiter.js`, `app.js` |
+| **Vulnerable dependencies** | A known flaw in a library | `npm audit` run on production dependencies (0 vulnerabilities after fixing two advisories in `body-parser` and `qs`); the CI pipeline repeats the scan on every push | `package-lock.json`, pipeline |
+| **Insufficient logging and monitoring** | An attack goes unnoticed, or nobody can tell what happened afterwards | Structured logs for logins, lockouts, rejected tokens, access-control denials, bookings, transactions, rate-limit hits and errors, correlated by request id and shipped to a cloud platform | `logger.js`, see Logging section |
+| **Cross-site request forgery (CSRF)** | A malicious site makes the browser send an authenticated request | The token is sent in the `Authorization` header by our own JavaScript, not in a cookie, so the browser never attaches it automatically; CORS blocks other origins from reading responses | `authenticate.js`, `app.js` |
+
+### Known limitations and residual risks
+
+Being honest about what is not covered is part of a security review.
+
+1. **Token storage in the browser.** The React app keeps the JWT in `localStorage`, which any script running on the page could read if an XSS flaw existed. Mitigations are the HTML-stripping on input, React's output escaping, the frontend CSP and the 1-hour expiry; revocation limits the damage of a stolen token. The more robust design would be an `HttpOnly` cookie with CSRF protection.
+2. **Lockout can be used against a user.** Someone can deliberately trigger a lock on another person's account. The lock is short, expires by itself and only grows for repeated offences.
+3. **No multi-factor authentication.** A strong password plus lockout is the only login factor.
+4. **Rate limit counters are held in memory per server instance.** Running several API instances would give each its own counters; a shared store such as Redis would be needed at scale.
+5. **Payments are simulated** (as the brief requires), so there is no real payment fraud surface and no payment-card data is handled.
+6. **The development certificate is self-signed.** A real deployment needs a certificate from a trusted authority.
+7. **The tax figure is an estimate** based on stated assumptions, not tax advice.
+
+### Verification
+
+- 124 automated backend tests (Jest and Supertest) cover the controls above, including role and ownership checks, lockout, revocation, headers, redaction and the tax logic.
+- The Postman collection and Newman run exercise the same behaviour end to end against a real database.
+- Static analysis and dependency scanning run in the CI pipeline (see Pipeline section).
+
+
+
+
+
+## 24E. Continuous Integration and Deployment Notes
+
+The GitHub Actions workflow at `.github/workflows/ci.yml` runs on pushes and pull requests targeting `main` or `master`. It uses Node.js 22 and performs the following checks:
+
+| Job | Checks |
+|---|---|
+| Backend | `npm ci`, Jest/Supertest suite, production dependency audit |
+| Frontend | `npm ci`, ESLint, Vitest/React Testing Library, Vite production build, production dependency audit |
+
+A failed check marks the workflow run as failed, giving the team feedback before merging. Docker Compose builds and runs the frontend, API and MongoDB containers for local demonstration. **The current workflow is CI, not automatic CD:** it does not publish images or deploy to a cloud host because no deployment provider or credentials are configured in this repository. A deployment job should be added only after the team selects and configures its target environment.
 
 ## 25. Academic Security Conclusion
 
@@ -913,13 +1220,13 @@ Part 1 establishes a security-focused foundation for HustleHub+.
 
 The backend combines several security controls rather than relying on a single mechanism. Passwords are hashed before storage, authentication is performed using signed JWTs, protected routes require valid authentication credentials, user input is validated server-side, HTTPS protects data in transit, request bodies are size-limited, security headers are applied, secrets are stored through environment configuration, and internal errors are controlled before being returned to clients.
 
-The layered architecture ensures that requests pass through security controls before sensitive application functionality is reached. Invalid input is rejected before controller processing, authentication is checked before protected resources are accessed, and internal failures are separated from information exposed to API users.
+The layered architecture ensures that requests pass through security controls before sensitive application functionality is reached, consistent with the risk-based approach described by OWASP (2021). Invalid input is rejected before controller processing, authentication is checked before protected resources are accessed, and internal failures are separated from information exposed to API users.
 
 The Part 1 in-memory store is permitted by the POE requirements. Because data access has been separated from the controllers, the persistence mechanism can be replaced with MongoDB/Mongoose in Part 2 without requiring a complete redesign of the authentication architecture.
 
 The resulting implementation therefore satisfies the immediate Part 1 secure-foundation requirements while providing a structured basis for the marketplace, financial, and additional security functionality planned for later parts.
 
-**Part 2 conclusion.** Part 2 keeps the layered approach and applies it to the marketplace. Every sensitive route requires a JWT, role checks and ownership checks decide who can act on which record, user input is validated, sanitised and size-limited, authentication and booking endpoints are rate limited, and the API sends a strict Content-Security-Policy with HSTS. Pricing and ownership are decided on the server, so the client cannot forge them. Known limitations: a JWT carries the role at the time it was issued, so a role change takes effect only after the token expires (1 hour by default); rate-limit counters live in server memory, so scaling to several instances would need a shared store such as Redis; the JWT is held in `localStorage` in the browser; and payments are simulated, as the brief permits. Part 3 will add the DevSecOps controls.
+**Part 2 conclusion.** Part 2 keeps the layered approach and applies it to the marketplace. Every sensitive route requires a JWT, role checks and ownership checks decide who can act on which record, user input is validated, sanitised and size-limited, authentication and booking endpoints are rate limited, and the API sends a strict Content-Security-Policy with HSTS. Pricing and ownership are decided on the server, so the client cannot forge them. Known limitations: a JWT carries the role at the time it was issued, so a role change takes effect only after the token expires (1 hour by default); rate-limit counters live in server memory, so scaling to several instances would need a shared store such as Redis; the JWT is held in `localStorage` in the browser; and payments are simulated, as the brief permits. The GitHub Actions workflow now provides continuous integration for backend tests, frontend lint/tests/build and production dependency audits; automatic deployment is not claimed.
 
 ---
 
@@ -929,7 +1236,7 @@ The resulting implementation therefore satisfies the immediate Part 1 secure-fou
 | ------ | ------------ |
 | Lonwabo Gumede | Backend security and integration: MongoDB/Mongoose models, RBAC and ownership checks, validation, sanitisation, rate limiting, Helmet/CSP and CORS, the gig, booking, transaction and income modules used in the final build, admin routes and seed script, Jest suites, the Part 2 Postman collection and Newman run, the wiring of the React pages to the API, and this README update. |
 | Ayabonga Nzuza | React frontend foundation (project setup, Login, Register, Gigs and Booking pages, routing, Vitest component tests), an earlier Postman collection and Newman HTML report, and README contributions. |
-| Nonjabulo Mathenjwa | An earlier booking and simulated-transaction implementation and a booking rate-limiting fix, pushed to the repository (commits `f6b817e` and `780ba0b`); the final build uses the integrated, tested version of this module. <!-- confirm wording with Nonjabulo --> |
+| Nonjabulo Mathenjwa | Frontend and documentation: income/tax dashboard, booking approval and cancellation interface, responsive UI refinements, Vitest coverage for dashboard and booking actions, architecture diagram updates, and README assembly incorporating the backend security, tax and logging documentation. |
 | Luke Lutchmiah | Part 1 Postman testing and documentation (`POSTMAN TESTING.docx`); an earlier gig controller/routes/test draft was uploaded but was not integrated because it lacked update and delete. <!-- confirm wording with Luke --> |
 
 ---
@@ -942,13 +1249,14 @@ The resulting implementation therefore satisfies the immediate Part 1 secure-fou
 
 | Section(s) within the Assessment         | AI Tool Used     | Purpose / Intention Behind Use                                                                                                                                                                                                                                                                                                      | Date(s) Used     | Link to AI Chat                                                |
 | ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------------------------- |
+| Part 2 – Frontend and documentation (Nonjabulo Mathenjwa) | ChatGPT (OpenAI) | Assistance with the income/tax dashboard, booking approval and cancellation interface, Vitest test drafts, architecture diagram and README assembly. The generated material must be reviewed, run and validated by the student before submission. | 9 November 2026 | This ChatGPT conversation (available in chat history) |
 | Part 1 – Documentation / Mermaid Diagram | ChatGPT (OpenAI) | Guidance on creating and structuring a Mermaid diagram for the HustleHub+ system documentation. ChatGPT was used to explain Mermaid diagram syntax, structure, and how to represent the required system components and relationships. The generated guidance was reviewed and adapted by me for the requirements of the assessment. | 7 September 2026 | https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 |
 | Part 1 and Part 2 – Backend code, tests, Postman/Newman collection, React integration, git and debugging guidance, README drafting | Claude (Anthropic) | Used as a coding and documentation assistant by Lonwabo Gumede: generating and reviewing backend code (Mongoose models, RBAC, sanitisation, rate limiting, error handling), Jest tests, the Part 2 Postman collection, wiring the React pages to the API, README sections, and step-by-step git and troubleshooting help. All code was run and tested by me (41 backend tests, Newman 64/64 against MongoDB Atlas, frontend tests) and reviewed before being committed. | Part 1 (September 2026) and 12 October 2026 | Available on request |
 
 
 ### Statement of Responsible AI Use
 
-ChatGPT was used for guidance on the Mermaid diagram syntax and structure for the Part 1 documentation. Claude was used as described in the table above for code, tests, documentation and troubleshooting. In both cases the AI output was reviewed, run, tested and adapted to the requirements of the assessment, and the final decisions, implementation and documentation remain my responsibility. Other team members should add their own AI-use entries to this table if they used generative AI.
+ChatGPT was used for the Part 1 diagram guidance and for Nonjabulo Mathenjwa’s Part 2 frontend and documentation assistance as recorded in the table. Claude was used as described above by Lonwabo Gumede. AI-generated output is supporting material: the relevant contributor remains responsible for reviewing, running, testing, adapting and understanding all submitted work. Other team members should add their own AI-use entries if they used generative AI.
 
 ---
 
@@ -979,7 +1287,7 @@ ChatGPT was used for guidance on the Mermaid diagram syntax and structure for th
 
 * [x] Gig management: freelancers create, update, view and delete their own gigs
 * [x] Ownership enforced: users cannot modify, delete or read resources that are not theirs
-* [x] Bookings create a simulated confirmation and a transaction record linked to client and freelancer
+* [x] Booking requests begin as pending; freelancer approval creates the simulated transaction; clients can cancel pending requests
 * [x] Freelancer income tracked from their own transactions
 * [x] JWT required on all protected routes
 * [x] Role-based access control enforced (client, freelancer, admin)
@@ -999,22 +1307,30 @@ ChatGPT was used for guidance on the Mermaid diagram syntax and structure for th
 
 # References
 
-Express.js. 2026. *Using middleware*. [online] Available at: https://expressjs.com/en/guide/using-middleware/ [Accessed 1 September 2026].
+Express.js (n.d.-a) *Express middleware*. Available at: https://expressjs.com/en/resources/middleware/ (Accessed: 9 November 2026).
 
-Express.js. 2026. *Routing*. [online] Available at: https://expressjs.com/en/guide/routing/ [Accessed 1 September 2026].
+Express.js (n.d.-b) *Routing*. Available at: https://expressjs.com/en/guide/routing/ (Accessed: 9 November 2026).
 
-Express.js. 2026. *Express middleware*. [online] Available at: https://expressjs.com/en/resources/middleware/ [Accessed 1 September 2026].
+Express.js (n.d.-c) *Using middleware*. Available at: https://expressjs.com/en/guide/using-middleware/ (Accessed: 9 November 2026).
 
-Express-Validator. 2026. *express-validator*. [online] Available at: https://express-validator.github.io/docs/ [Accessed 1 September 2026].
+Express-Validator (n.d.) *express-validator documentation*. Available at: https://express-validator.github.io/docs/ (Accessed: 9 November 2026).
 
-Jones, M., Bradley, J. and Sakimura, N. 2015. *RFC 7519: JSON Web Token (JWT)*.
+Jones, M., Bradley, J. and Sakimura, N. (2015) *JSON Web Token (JWT)*. RFC 7519. Available at: https://www.rfc-editor.org/rfc/rfc7519 (Accessed: 9 November 2026).
 
-Node.js. 2026. *Node.js v26.8.1 documentation*. [online] Available at: https://nodejs.org/api/https.html [Accessed 1 September 2026].
+Node.js (n.d.) *HTTPS documentation*. Available at: https://nodejs.org/api/https.html (Accessed: 9 November 2026).
 
-OpenAI. 2026. *ChatGPT (GPT-5.6 Luna)*. Available at: https://chatgpt.com/share/6a9f21f7-ef64-83ea-9afc-16ef74f979e9 [Accessed 7 September 2026].
+OWASP (2021) *OWASP Top 10:2021*. Available at: https://owasp.org/Top10/ (Accessed: 9 November 2026).
 
-OWASP. 2026. *Input Validation Cheat Sheet*. [online] Available at: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet [Accessed 1 September 2026].
+OWASP (n.d.-a) *Authentication Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html (Accessed: 9 November 2026).
 
-OWASP. 2026. *Password Storage Cheat Sheet*. [online] Available at: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet [Accessed 1 September 2026].
+OWASP (n.d.-b) *Content Security Policy Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html (Accessed: 9 November 2026).
 
-OWASP. 2026. *REST Security Cheat Sheet*. [online] Available at: https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet [Accessed 1 September 2026].
+OWASP (n.d.-c) *Input Validation Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html (Accessed: 9 November 2026).
+
+OWASP (n.d.-d) *Logging Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html (Accessed: 9 November 2026).
+
+OWASP (n.d.-e) *Password Storage Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html (Accessed: 9 November 2026).
+
+OWASP (n.d.-f) *REST Security Cheat Sheet*. OWASP Cheat Sheet Series. Available at: https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html (Accessed: 9 November 2026).
+
+South African Revenue Service (SARS) (2026) *Rates of tax for individuals*. Available at: https://www.sars.gov.za/tax-rates/income-tax/rates-of-tax-for-individuals/ (Accessed: 8 November 2026).
