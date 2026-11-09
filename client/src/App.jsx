@@ -1,5 +1,4 @@
-
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -18,6 +17,18 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        {/* Simple Demo Navigation Header */}
+        <header className="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-slate-800">
+          <Link to="/gigs" className="font-bold text-xl tracking-wide">
+            HustleHub<span className="text-blue-500">+</span>
+          </Link>
+          <nav className="space-x-4">
+            <Link to="/gigs" className="hover:text-blue-400">Marketplace</Link>
+            <Link to="/login" className="hover:text-blue-400">Login</Link>
+            <Link to="/register" className="bg-blue-600 px-3 py-1.5 rounded hover:bg-blue-700">Register</Link>
+          </nav>
+        </header>
+
         <Routes>
           {/* Redirect the home page to the gigs page */}
           <Route
