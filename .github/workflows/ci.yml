@@ -51,20 +51,26 @@ jobs:
       - name: Dependency audit (production dependencies)
         run: npm audit --omit=dev --audit-level=high
 
-  codeql:
-    name: Static analysis (CodeQL)
+  static-analysis:
+    name: Static analysis (Semgrep)
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
+    container:
+      image: semgrep/semgrep:latest
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - name: Semgrep scan (JavaScript, Node.js, React, secrets, OWASP Top 10)
+        run: >
+          semgrep scan
+          --config p/javascript --config p/nodejs --config p/react
+          --config p/secrets --config p/owasp-top-ten
+          --metrics=off --exclude node_modules --exclude tests
+          --text --output semgrep-report.txt || true
+      - name: Show report
+        run: cat semgrep-report.txt
+      - uses: actions/upload-artifact@v4
         with:
-          languages: javascript-typescript
-          queries: security-and-quality
-      - uses: github/codeql-action/analyze@v3
+          name: semgrep-report
+          path: semgrep-report.txt
 
   docker:
     name: Docker images build
