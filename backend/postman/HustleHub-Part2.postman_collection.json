@@ -48,6 +48,10 @@
     {
       "key": "bookingId",
       "value": ""
+    },
+    {
+      "key": "bookingId2",
+      "value": ""
     }
   ],
   "item": [
@@ -783,7 +787,7 @@
       ]
     },
     {
-      "name": "25 Client books gig (booking + transaction created)",
+      "name": "25 Client books gig (pending request, no transaction yet)",
       "request": {
         "method": "POST",
         "header": [
@@ -811,8 +815,172 @@
               "pm.test('Status is 201', () => pm.response.to.have.status(201));",
               "const json = pm.response.json();",
               "pm.test('Booking links client and freelancer', () => { pm.expect(json.data.booking.client).to.eql(pm.collectionVariables.get('idC')); pm.expect(json.data.booking.freelancer).to.eql(pm.collectionVariables.get('idA')); });",
-              "pm.test('Transaction created from server-side price (tampered amount ignored)', () => { pm.expect(json.data.transaction.amount).to.eql(600); pm.expect(json.data.transaction.status).to.eql('simulated-paid'); pm.expect(json.data.transaction.booking).to.eql(json.data.booking.id); });",
+              "pm.test('Booking is pending and uses the server-side price (tampered amount ignored)', () => { pm.expect(json.data.booking.status).to.eql('pending'); pm.expect(json.data.booking.price).to.eql(600); });",
+              "pm.test('No transaction before approval', () => pm.expect(json.data.transaction).to.be.undefined);",
               "pm.collectionVariables.set('bookingId', json.data.booking.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25a Client cannot approve (RBAC)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenC}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings/{{bookingId}}/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25b Freelancer B cannot approve A's booking (ownership)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenB}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings/{{bookingId}}/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25c Freelancer A approves the booking",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenA}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings/{{bookingId}}/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"note\": \"Happy to start Monday\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Booking approved', () => pm.expect(json.data.booking.status).to.eql('approved'));",
+              "pm.test('Transaction created on approval from server-side price', () => { pm.expect(json.data.transaction.amount).to.eql(600); pm.expect(json.data.transaction.status).to.eql('simulated-paid'); pm.expect(json.data.transaction.booking).to.eql(json.data.booking.id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25d Approving twice is refused (state machine)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenA}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings/{{bookingId}}/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25e Client cannot cancel an approved booking",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenC}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings/{{bookingId}}/cancel",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 409', () => pm.response.to.have.status(409));"
             ]
           }
         }
@@ -1071,6 +1239,175 @@
       ]
     },
     {
+      "name": "32a Freelancer A tax summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenA}}"
+          }
+        ],
+        "url": "{{baseUrl}}/income/tax"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('Tax summary has 12 monthly entries', () => pm.expect(d.monthly).to.have.lengthOf(12));",
+              "pm.test('Income R600 is below the tax threshold, so no tax', () => { pm.expect(d.grossIncome).to.eql(600); pm.expect(d.estimatedTax).to.eql(0); pm.expect(d.belowTaxThreshold).to.eql(true); });",
+              "pm.test('Assumptions are provided', () => pm.expect(d.assumptions).to.be.an('array').that.is.not.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32b Tax summary - invalid tax year rejected",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenA}}"
+          }
+        ],
+        "url": "{{baseUrl}}/income/tax?taxYear=1999"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32c Client cannot view tax summary (RBAC)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenC}}"
+          }
+        ],
+        "url": "{{baseUrl}}/income/tax"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32d Client makes a second booking",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenC}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"gigId\": \"{{gigId2}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('bookingId2', pm.response.json().data.booking.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32e Freelancer A rejects it",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenA}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/bookings/{{bookingId2}}/reject",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"note\": \"Fully booked\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('Booking rejected', () => pm.expect(pm.response.json().data.booking.status).to.eql('rejected'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32f Rejected booking creates no income",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenA}}"
+          }
+        ],
+        "url": "{{baseUrl}}/income"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const d = pm.response.json().data;",
+              "pm.test('Income unchanged by rejected booking', () => { pm.expect(d.totalIncome).to.eql(600); pm.expect(d.transactionCount).to.eql(1); });",
+              "pm.test('Status counts reported', () => { pm.expect(d.bookingStatusCounts.approved).to.eql(1); pm.expect(d.bookingStatusCounts.rejected).to.eql(1); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "36 Freelancer B cannot delete A's gig",
       "request": {
         "method": "DELETE",
@@ -1188,6 +1525,62 @@
               "pm.test('CSP header', () => pm.expect(pm.response.headers.get('Content-Security-Policy')).to.include(\"default-src 'none'\"));",
               "pm.test('HSTS header', () => pm.expect(pm.response.headers.get('Strict-Transport-Security')).to.exist);",
               "pm.test('No X-Powered-By', () => pm.expect(pm.response.headers.has('X-Powered-By')).to.eql(false));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32g Logout revokes the token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenB}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/auth/logout",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32h Revoked token is refused",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenB}}"
+          }
+        ],
+        "url": "{{baseUrl}}/users/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status is 401', () => pm.response.to.have.status(401));"
             ]
           }
         }
